@@ -36,6 +36,8 @@ const (
 	LBRACE = "{"
 	RBRACE = "}"
 
+	NLINE = "\n"
+
 	// Keywords
 
 	FUNCTION = "FUNC"
@@ -45,6 +47,7 @@ const (
 	IF       = "IF"
 	ELSE     = "ELSE"
 	RETURN   = "RETURN"
+	DTYPE    = "DTYPE"
 )
 
 var keywords = map[string]TokenType{
@@ -55,6 +58,9 @@ var keywords = map[string]TokenType{
 	"if":     IF,
 	"else":   ELSE,
 	"return": RETURN,
+	"string": DTYPE,
+	"int":    DTYPE,
+	"bool":   DTYPE,
 }
 
 func FindIdent(ident string) TokenType {

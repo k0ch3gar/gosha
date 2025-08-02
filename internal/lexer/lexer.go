@@ -71,6 +71,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.LPAREN, l.ch)
 	case ')':
 		tok = newToken(token.RPAREN, l.ch)
+	case '\n':
+		tok = newToken(token.NLINE, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
 	case '-':
@@ -147,8 +149,8 @@ func (l *Lexer) skipWhitespace() {
 			l.readCh()
 		case '\t':
 			l.readCh()
-		case '\n':
-			l.readCh()
+		//case '\n':
+		//	l.readCh()
 		case '\r':
 			l.readCh()
 		default:
