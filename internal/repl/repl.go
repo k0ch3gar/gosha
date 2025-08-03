@@ -2,10 +2,13 @@ package repl
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"kstmc.com/gosha/internal/evaluator"
 	"kstmc.com/gosha/internal/lexer"
 	"kstmc.com/gosha/internal/parser"
+	"os"
 )
 
 const (
@@ -13,7 +16,21 @@ const (
 )
 
 func Start(in io.Reader, out io.Writer) {
+	file, ok := in.(*os.File)
+
 	scanner := bufio.NewScanner(in)
+	if !(ok && file == os.Stdin) {
+		data, err := io.ReadAll(in)
+		if err != nil {
+			fmt.Errorf("unable to read data from file: %s", err.Error())
+			return
+		}
+
+		startPos := bytes.IndexByte(data, '\n')
+
+		processInput(out, string(data[startPos:]))
+		return
+	}
 
 	for {
 		io.WriteString(out, PROMPT)
@@ -25,20 +42,24 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
-		l := lexer.New(line)
-		p := parser.New(l)
+		processInput(out, line)
+	}
+}
 
-		program := p.ParseProgram()
-		if len(p.Errors()) != 0 {
-			printParserErrors(out, p.Errors())
-			continue
-		}
+func processInput(out io.Writer, input string) {
+	l := lexer.New(input)
+	p := parser.New(l)
 
-		evaluated := evaluator.Eval(program)
-		if evaluated != nil {
-			io.WriteString(out, evaluated.Inspect())
-			io.WriteString(out, "\n")
-		}
+	program := p.ParseProgram()
+	if len(p.Errors()) != 0 {
+		printParserErrors(out, p.Errors())
+		return
+	}
+
+	evaluated := evaluator.Eval(program)
+	if evaluated != nil {
+		io.WriteString(out, evaluated.Inspect())
+		io.WriteString(out, "\n")
 	}
 }
 

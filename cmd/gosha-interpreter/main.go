@@ -8,11 +8,22 @@ import (
 )
 
 func main() {
-	user, err := user.Current()
-	if err != nil {
-		panic(err)
-	}
+	if len(os.Args) > 1 {
+		file, err := os.Open(os.Args[1])
+		if err != nil {
+			fmt.Printf("Error opening file: %s\n", err)
+			os.Exit(1)
+		}
 
-	fmt.Printf("Дарова %s!\nЭто Гоша. Он очень крутой!\n", user.Username)
-	repl.Start(os.Stdin, os.Stdout)
+		defer file.Close()
+		repl.Start(file, os.Stdout)
+	} else {
+		user, err := user.Current()
+		if err != nil {
+			panic(err)
+		}
+
+		fmt.Printf("Hi %s!\nThat's Gosha!\n", user.Username)
+		repl.Start(os.Stdin, os.Stdout)
+	}
 }
