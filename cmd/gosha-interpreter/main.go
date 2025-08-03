@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"kstmc.com/gosha/internal/repl"
 	"os"
-	user "os/user"
+	"os/user"
 )
 
 func main() {
