@@ -1,8 +1,9 @@
-package parser
+package test
 
 import (
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
+	"kstmc.com/gosha/internal/parser"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ return 10
 return 993322
 `
 	l := lexer.New(input)
-	p := New(l)
+	p := parser.New(l)
 	program := p.ParseProgram()
 	checkParserErrors(t, p)
 	if len(program.Statements) != 3 {

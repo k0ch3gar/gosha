@@ -1,21 +1,22 @@
-package parser
+package test
 
 import (
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
+	"kstmc.com/gosha/internal/parser"
 	"testing"
 )
 
 func TestAssignStatements(t *testing.T) {
 	input := `
-x  5;
-y := 10
-foo := 838383
+x = 5;
+y = 10
+foo = 838383
 x = 4
 `
 
 	l := lexer.New(input)
-	p := New(l)
+	p := parser.New(l)
 
 	program := p.ParseProgram()
 	if program == nil {
@@ -32,9 +33,9 @@ x = 4
 		expectedIdentifier string
 		expectedAssign     string
 	}{
-		{"x", ":="},
-		{"y", ":="},
-		{"foo", ":="},
+		{"x", "="},
+		{"y", "="},
+		{"foo", "="},
 		{"x", "="},
 	}
 
@@ -46,7 +47,7 @@ x = 4
 	}
 }
 
-func checkParserErrors(t *testing.T, p *Parser) {
+func checkParserErrors(t *testing.T, p *parser.Parser) {
 	errors := p.Errors()
 	if len(errors) == 0 {
 		return
