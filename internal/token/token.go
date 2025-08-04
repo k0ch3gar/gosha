@@ -21,6 +21,8 @@ const (
 	GT  = ">"
 	EQ  = "=="
 	NEQ = "!="
+	AND = "&&"
+	OR  = "||"
 
 	ASSIGN     = "="
 	INITASSIGN = ":="
@@ -35,6 +37,7 @@ const (
 
 	LBRACE = "{"
 	RBRACE = "}"
+	PIPE   = "|"
 
 	NLINE = "\n"
 
@@ -48,6 +51,7 @@ const (
 	ELSE     = "ELSE"
 	RETURN   = "RETURN"
 	DTYPE    = "DTYPE"
+	CALL     = "CALL"
 )
 
 var keywords = map[string]TokenType{
@@ -61,6 +65,7 @@ var keywords = map[string]TokenType{
 	"string": DTYPE,
 	"int":    DTYPE,
 	"bool":   DTYPE,
+	"echo":   CALL,
 }
 
 func FindIdent(ident string) TokenType {
