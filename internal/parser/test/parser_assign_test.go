@@ -7,6 +7,49 @@ import (
 	"testing"
 )
 
+func TestVarStatements(t *testing.T) {
+	tests := []struct {
+		input              string
+		expectedIdentifier string
+		expectedValue      string
+	}{
+		{"var a = 5", "a", "5"},
+		{"var baba = 9 + 10", "baba", "(9 + 10)"},
+		{"var foobar = 1 + 2 * 3", "foobar", "(1 + (2 * 3))"},
+	}
+
+	for _, tt := range tests {
+		l := lexer.New(tt.input)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		if program == nil {
+			t.Fatalf("ParseProgram() returned nil")
+		}
+
+		checkParserErrors(t, p)
+
+		if len(program.Statements) != 1 {
+			t.Fatalf("program.Statements does not contain 1 statements. got=%d", len(program.Statements))
+		}
+
+		stmt, ok := program.Statements[0].(*ast.VarStatement)
+		if !ok {
+			t.Errorf("program.Statements[0] is not *ast.VarStatement. got=%T", program.Statements[0])
+			continue
+		}
+
+		if stmt.Name.String() != tt.expectedIdentifier {
+			t.Errorf("wrong identifier name. got=%q, expected=%q", stmt.Name.String(), tt.expectedIdentifier)
+			continue
+		}
+
+		if stmt.Value.String() != tt.expectedValue {
+			t.Errorf("wrong value. got=%q, expected=%q", stmt.Value.String(), tt.expectedValue)
+			continue
+		}
+	}
+}
+
 func TestAssignStatements(t *testing.T) {
 	input := `
 x = 5;

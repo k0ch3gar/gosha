@@ -7,6 +7,7 @@ import (
 	"io"
 	"kstmc.com/gosha/internal/evaluator"
 	"kstmc.com/gosha/internal/lexer"
+	"kstmc.com/gosha/internal/object"
 	"kstmc.com/gosha/internal/parser"
 	"os"
 )
@@ -19,6 +20,8 @@ func Start(in io.Reader, out io.Writer) {
 	file, ok := in.(*os.File)
 
 	scanner := bufio.NewScanner(in)
+	env := object.NewEnvironment()
+
 	if !(ok && file == os.Stdin) {
 		data, err := io.ReadAll(in)
 		if err != nil {
@@ -28,7 +31,7 @@ func Start(in io.Reader, out io.Writer) {
 
 		startPos := bytes.IndexByte(data, '\n')
 
-		processInput(out, string(data[startPos:]))
+		processInput(out, string(data[startPos:]), env)
 		return
 	}
 
@@ -42,11 +45,11 @@ func Start(in io.Reader, out io.Writer) {
 		}
 
 		line := scanner.Text()
-		processInput(out, line)
+		processInput(out, line, env)
 	}
 }
 
-func processInput(out io.Writer, input string) {
+func processInput(out io.Writer, input string, env *object.Environment) {
 	l := lexer.New(input)
 	p := parser.New(l)
 
@@ -56,8 +59,8 @@ func processInput(out io.Writer, input string) {
 		return
 	}
 
-	evaluated := evaluator.Eval(program)
-	if evaluated != nil {
+	evaluated := evaluator.Eval(program, env)
+	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
 		io.WriteString(out, evaluated.Inspect())
 		io.WriteString(out, "\n")
 	}

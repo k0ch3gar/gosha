@@ -1,6 +1,7 @@
-package evaluator
+package test
 
 import (
+	"kstmc.com/gosha/internal/evaluator"
 	"kstmc.com/gosha/internal/lexer"
 	"kstmc.com/gosha/internal/object"
 	"kstmc.com/gosha/internal/parser"
@@ -8,7 +9,7 @@ import (
 )
 
 func testNullObject(t *testing.T, evaluated object.Object) bool {
-	if evaluated != NIL {
+	if evaluated != evaluator.NIL {
 		t.Errorf("object is not NIL. got=%T (%+v)", evaluated, evaluated)
 		return false
 	}
@@ -35,8 +36,9 @@ func testEval(input string) object.Object {
 	l := lexer.New(input)
 	p := parser.New(l)
 	program := p.ParseProgram()
+	env := object.NewEnvironment()
 
-	return Eval(program)
+	return evaluator.Eval(program, env)
 }
 
 func testIntegerObject(t *testing.T, obj object.Object, expected int64) bool {

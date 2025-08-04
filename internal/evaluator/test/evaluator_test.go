@@ -1,6 +1,7 @@
-package evaluator
+package test
 
 import (
+	"kstmc.com/gosha/internal/object"
 	"testing"
 )
 
@@ -124,6 +125,85 @@ func TestReturnStatements(t *testing.T) {
 			return 1;
 		}
 		`, 10},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testIntegerObject(t, evaluated, tt.expected)
+	}
+}
+
+func TestErrorHandling(t *testing.T) {
+	tests := []struct {
+		input           string
+		expectedMessage string
+	}{
+		{
+			"5 + true;",
+			"type mismatch: INTEGER + BOOLEAN",
+		},
+		{
+			"5 + true; 5;",
+			"type mismatch: INTEGER + BOOLEAN",
+		},
+		{
+			"-true",
+			"unknown operator: -BOOLEAN",
+		},
+		{
+			"true + false;",
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			"5; true + false; 5",
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			"if (10 > 1) { true + false; }",
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			`
+			if (10 > 1) {
+				if (10 > 1) {
+					return true + false;
+				}
+				
+				return 1;
+			}
+			`,
+			"unknown operator: BOOLEAN + BOOLEAN",
+		},
+		{
+			"baba",
+			"identifier not found: baba",
+		},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		errObject, ok := evaluated.(*object.Error)
+		if !ok {
+			t.Errorf("no error object returned. got=%T(%+v)", evaluated, evaluated)
+			continue
+		}
+
+		if errObject.Message != tt.expectedMessage {
+			t.Errorf("wrong error message. expected=%q. got=%q", tt.expectedMessage, errObject.Message)
+		}
+	}
+}
+
+func TestVarStatements(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int64
+	}{
+		{"var baba = 5; baba", 5},
+		{"var baba = 5 * 5; baba", 25},
+		{"var baba = 5 * 5; var bobo = baba; bobo", 25},
+		{"var baba = 5; var bobo = baba * 2; var foobar = baba + bobo * 2; foobar", 25},
 	}
 
 	for _, tt := range tests {
