@@ -3,8 +3,9 @@ package ast
 import "kstmc.com/gosha/internal/token"
 
 type Identifier struct {
-	Token token.Token
-	Value string
+	Token    token.Token
+	Value    string
+	DataType *DataType
 }
 
 func (i *Identifier) expressionNode() {

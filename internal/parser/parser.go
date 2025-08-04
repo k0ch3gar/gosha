@@ -21,6 +21,10 @@ const (
 	CALL
 )
 
+var (
+	VOID = &ast.DataType{Token: token.Token{Type: token.DTYPE, Literal: "void"}, Name: "void"}
+)
+
 var precedences = map[token.TokenType]int{
 	token.OR:       OR,
 	token.AND:      AND,
@@ -122,11 +126,22 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 		Token: p.curToken,
 	}
 
+	if p.peekTokenIs(token.IDENT) {
+		p.nextToken()
+		lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+	}
+
 	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
 
 	lit.Parameters = p.parseFunctionParameters()
+	lit.ReturnType = VOID
+
+	if p.peekTokenIs(token.DTYPE) {
+		p.nextToken()
+		lit.ReturnType = &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
+	}
 
 	if !p.expectPeek(token.LBRACE) {
 		return nil
@@ -147,24 +162,51 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 	p.nextToken()
 
+	dataType := &ast.DataType{Name: token.ILLEGAL}
+
 	ident := &ast.Identifier{
-		Token: p.curToken,
-		Value: p.curToken.Literal,
+		Token:    p.curToken,
+		Value:    p.curToken.Literal,
+		DataType: dataType,
+	}
+
+	if p.peekTokenIs(token.DTYPE) {
+		p.nextToken()
+		dataType.Token = p.curToken
+		dataType.Name = p.curToken.Literal
+		dataType = &ast.DataType{Name: token.ILLEGAL}
 	}
 
 	idents = append(idents, ident)
 	for p.peekTokenIs(token.COMMA) {
 		p.nextToken()
-		p.nextToken()
+		if !p.expectPeek(token.IDENT) {
+			return nil
+		}
+
 		ident := &ast.Identifier{
-			Token: p.curToken,
-			Value: p.curToken.Literal,
+			Token:    p.curToken,
+			Value:    p.curToken.Literal,
+			DataType: dataType,
+		}
+
+		if p.peekTokenIs(token.DTYPE) {
+			p.nextToken()
+			dataType.Token = p.curToken
+			dataType.Name = p.curToken.Literal
+			dataType = &ast.DataType{Name: token.ILLEGAL}
 		}
 
 		idents = append(idents, ident)
 	}
 
 	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+
+	if idents[len(idents)-1].DataType.Name == token.ILLEGAL {
+		msg := fmt.Sprintf("expected parameter type for %s", idents[len(idents)-1].Value)
+		p.errors = append(p.errors, msg)
 		return nil
 	}
 
@@ -257,6 +299,12 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt.Name = &ast.Identifier{
 		Token: p.curToken,
 		Value: p.curToken.Literal,
+	}
+
+	if p.peekTokenIs(token.DTYPE) {
+		p.nextToken()
+
+		stmt.Name.DataType = &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
 	}
 
 	if !p.expectPeek(token.ASSIGN) {
