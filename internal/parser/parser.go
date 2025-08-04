@@ -320,6 +320,8 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curToken.Type {
+	case token.HASH:
+		return p.parseCommentStatement()
 	case token.VAR:
 		return p.parseVarStatement()
 	//case token.CALL:
@@ -341,6 +343,17 @@ func (p *Parser) parseStatement() ast.Statement {
 	default:
 		return p.parseExpressionStatement()
 	}
+}
+
+func (p *Parser) parseCommentStatement() ast.Statement {
+	if p.curTokenIs(token.HASH) {
+		for !p.curTokenIs(token.NLINE) && !p.curTokenIs(token.EOF) {
+			p.nextToken()
+		}
+
+	}
+
+	return nil
 }
 
 //func (p *Parser) parseCallStatement()

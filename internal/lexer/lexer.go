@@ -73,6 +73,8 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.RPAREN, l.ch)
 	case '\n':
 		tok = newToken(token.NLINE, l.ch)
+	case '#':
+		tok = newToken(token.HASH, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
 	case '&':

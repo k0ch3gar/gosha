@@ -16,6 +16,7 @@ const (
 	BANG     = "!"
 	ASTERISK = "*"
 	SLASH    = "/"
+	HASH     = "#"
 
 	LT  = "<"
 	GT  = ">"
