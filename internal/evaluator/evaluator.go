@@ -65,7 +65,12 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		body := node.Body
 		returnType := node.ReturnType
 		name := node.Name
-		return &object.Function{Parameters: params, Env: env, Body: body, ReturnType: returnType, Name: name}
+		function := &object.Function{Parameters: params, Env: env, Body: body, ReturnType: returnType, Name: name}
+		if name != nil {
+			env.Set(name.Value, function)
+		}
+
+		return function
 	case *ast.PrefixExpression:
 		right := Eval(node.Right, env)
 		if isError(right) {
