@@ -38,6 +38,8 @@ func analyzeStatement(stmt ast.Statement, returnType object.ObjectType, env *obj
 		return analyzeIfStatement(stmt, returnType, env)
 	case *ast.VarStatement:
 		return analyzeVarStatement(stmt, env)
+	case *ast.InitAssignStatement:
+		return analyzeInitAssignStatement(stmt, env)
 	default:
 		return []string{fmt.Sprintf("Analyzer error. Unsupported statement %T", stmt)}
 	}
@@ -53,7 +55,7 @@ func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) 
 
 	ident, _ := env.Get(stmt.Name.Value)
 
-	exprType, errors := analyzeExpression(stmt.Value, env)
+	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
 		return errors
 	}
@@ -72,9 +74,14 @@ func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) 
 	return errors
 }
 
+func analyzeInitAssignStatement(stmt *ast.InitAssignStatement, env *object.Environment) []string {
+	_, errors := AnalyzeExpression(stmt.Value, env)
+	return errors
+}
+
 func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []string {
-	identType := rawTypeToObj(stmt.Name.DataType.Name).Type()
-	exprType, errors := analyzeExpression(stmt.Value, env)
+	identType := RawTypeToObj(stmt.Name.DataType.Name).Type()
+	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
 		return errors
 	}
@@ -88,7 +95,7 @@ func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []stri
 }
 
 func analyzeReturnStatement(stmt *ast.ReturnStatement, returnType object.ObjectType, env *object.Environment) []string {
-	stmtReturnType, errors := analyzeExpression(stmt.ReturnValue, env)
+	stmtReturnType, errors := AnalyzeExpression(stmt.ReturnValue, env)
 	if len(errors) != 0 {
 		return errors
 	}
@@ -102,11 +109,11 @@ func analyzeReturnStatement(stmt *ast.ReturnStatement, returnType object.ObjectT
 }
 
 func analyzeExpressionStatement(expr *ast.ExpressionStatement, env *object.Environment) []string {
-	_, errors := analyzeExpression(expr.Expression, env)
+	_, errors := AnalyzeExpression(expr.Expression, env)
 	return errors
 }
 
-func analyzeExpression(expr ast.Expression, env *object.Environment) (object.ObjectType, []string) {
+func AnalyzeExpression(expr ast.Expression, env *object.Environment) (object.ObjectType, []string) {
 	var errors []string
 	switch expr := expr.(type) {
 	case *ast.IntegerLiteral:
@@ -138,7 +145,7 @@ func analyzeExpression(expr ast.Expression, env *object.Environment) (object.Obj
 }
 
 func analyzeIfStatement(expr *ast.IfStatement, returnType object.ObjectType, env *object.Environment) []string {
-	conditionType, errors := analyzeExpression(expr.Condition, env)
+	conditionType, errors := AnalyzeExpression(expr.Condition, env)
 	if len(errors) != 0 {
 		return errors
 	}
@@ -163,13 +170,13 @@ func analyzeCallExpressionThroughAnonymousFunc(expr *ast.CallExpression, env *ob
 	var errors []string
 	for i, param := range fn.Parameters {
 		var arg object.ObjectType
-		arg, tempErrors := analyzeExpression(expr.Arguments[i], env)
+		arg, tempErrors := AnalyzeExpression(expr.Arguments[i], env)
 		if len(tempErrors) != 0 {
 			return "", append(errors, tempErrors...)
 		}
 
-		if rawTypeToObj(param.DataType.Name).Type() != arg {
-			msg := fmt.Sprintf("analyzer error. Incorrect type passed into %s function. expected %s, got=%s", fn.Name.Value, rawTypeToObj(param.DataType.Name).Type(), arg)
+		if RawTypeToObj(param.DataType.Name).Type() != arg {
+			msg := fmt.Sprintf("analyzer error. Incorrect type passed into %s function. expected %s, got=%s", fn.Name.Value, RawTypeToObj(param.DataType.Name).Type(), arg)
 			errors = append(errors, msg)
 		}
 	}
@@ -178,7 +185,7 @@ func analyzeCallExpressionThroughAnonymousFunc(expr *ast.CallExpression, env *ob
 		return "", errors
 	}
 
-	return rawTypeToObj(fn.ReturnType.Name).Type(), nil
+	return RawTypeToObj(fn.ReturnType.Name).Type(), nil
 }
 
 func analyzeCallExpression(expr *ast.CallExpression, env *object.Environment) (object.ObjectType, []string) {
@@ -202,13 +209,13 @@ func analyzeCallExpression(expr *ast.CallExpression, env *object.Environment) (o
 	var errors []string
 	for i, param := range fn.Parameters {
 		var arg object.ObjectType
-		arg, tempErrors := analyzeExpression(expr.Arguments[i], env)
+		arg, tempErrors := AnalyzeExpression(expr.Arguments[i], env)
 		if len(tempErrors) != 0 {
 			return "", append(errors, tempErrors...)
 		}
 
-		if rawTypeToObj(param.DataType.Name).Type() != arg {
-			msg := fmt.Sprintf("analyzer error. Incorrect type passed into %s function. expected %s, got=%s", fn.Name.Value, rawTypeToObj(param.DataType.Name).Type(), arg)
+		if RawTypeToObj(param.DataType.Name).Type() != arg {
+			msg := fmt.Sprintf("analyzer error. Incorrect type passed into %s function. expected %s, got=%s", fn.Name.Value, RawTypeToObj(param.DataType.Name).Type(), arg)
 			errors = append(errors, msg)
 		}
 	}
@@ -217,20 +224,20 @@ func analyzeCallExpression(expr *ast.CallExpression, env *object.Environment) (o
 		return "", errors
 	}
 
-	return rawTypeToObj(fn.ReturnType.Name).Type(), nil
+	return RawTypeToObj(fn.ReturnType.Name).Type(), nil
 }
 
 func analyzeFunctionLiteral(expr *ast.FunctionLiteral, env *object.Environment) (object.ObjectType, []string) {
 	env = object.NewEnclosedEnvironment(env)
 	for _, ident := range expr.Parameters {
-		env.Set(ident.Value, rawTypeToObj(ident.DataType.Name))
+		env.Set(ident.Value, RawTypeToObj(ident.DataType.Name))
 	}
 
-	errors := analyzeBlockStatement(expr.Body, rawTypeToObj(expr.ReturnType.Name).Type(), env)
+	errors := analyzeBlockStatement(expr.Body, RawTypeToObj(expr.ReturnType.Name).Type(), env)
 	return object.FUNCTION_OBJ, errors
 }
 
-func rawTypeToObj(rawType string) object.Object {
+func RawTypeToObj(rawType string) object.Object {
 	switch rawType {
 	case "int":
 		return &object.Integer{}
@@ -246,12 +253,12 @@ func rawTypeToObj(rawType string) object.Object {
 }
 
 func analyzeInfixExpression(expr *ast.InfixExpression, env *object.Environment) (object.ObjectType, []string) {
-	leftType, errors := analyzeExpression(expr.Left, env)
+	leftType, errors := AnalyzeExpression(expr.Left, env)
 	if len(errors) != 0 {
 		return "", errors
 	}
 
-	rightType, errors := analyzeExpression(expr.Right, env)
+	rightType, errors := AnalyzeExpression(expr.Right, env)
 	if len(errors) != 0 {
 		return "", errors
 	}
@@ -367,7 +374,7 @@ func analyzePlusInfixOperator(leftType, rightType object.ObjectType) (object.Obj
 }
 
 func analyzePrefixExpression(expr *ast.PrefixExpression, env *object.Environment) (object.ObjectType, []string) {
-	rightType, errors := analyzeExpression(expr.Right, env)
+	rightType, errors := AnalyzeExpression(expr.Right, env)
 	if len(errors) != 0 {
 		return object.NIL_OBJ, errors
 	}

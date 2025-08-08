@@ -66,6 +66,7 @@ var keywords = map[string]TokenType{
 	"string": DTYPE,
 	"int":    DTYPE,
 	"bool":   DTYPE,
+	"any":    DTYPE,
 	"echo":   CALL,
 }
 

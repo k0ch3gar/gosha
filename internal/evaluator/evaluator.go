@@ -2,8 +2,11 @@ package evaluator
 
 import (
 	"fmt"
+	"strconv"
+
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/object"
+	"kstmc.com/gosha/internal/parser"
 	"kstmc.com/gosha/internal/token"
 )
 
@@ -47,10 +50,24 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return newError("variable with such name already exists: %q", node.Name.Value)
 		}
 
-		env.Set(node.Name.Value, val)
-
+		if node.Name.DataType.Name == parser.ANY.Name {
+			env.Set(node.Name.Value, &object.Any{Value: val.Inspect()})
+		} else {
+			env.Set(node.Name.Value, val)
+		}
 	case *ast.ExpressionStatement:
 		return Eval(node.Expression, env)
+	case *ast.InitAssignStatement:
+		val := Eval(node.Value, env)
+		if isError(val) {
+			return val
+		}
+
+		if env.Contains(node.Name.Value) {
+			return newError("Identifier %q already exists", node.Name.Value)
+		}
+
+		env.Set(node.Name.Value, val)
 	case *ast.CallExpression:
 		function := Eval(node.Function, env)
 		if isError(function) {
@@ -104,6 +121,20 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	}
 
 	return NIL
+}
+
+func makeObject(objType object.ObjectType, val string) object.Object {
+	switch objType {
+	case object.INTEGER_OBJ:
+		valInt, _ := strconv.ParseInt(val, 10, 64)
+		return &object.Integer{Value: valInt}
+	case object.BOOLEAN_OBJ:
+		return &object.Boolean{Value: val == "true"}
+	case object.ANY_OBJ:
+		return &object.Any{Value: val}
+	default:
+		return NIL
+	}
 }
 
 func evalProgram(program *ast.Program, env *object.Environment) object.Object {
