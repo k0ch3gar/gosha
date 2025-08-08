@@ -32,5 +32,8 @@ func (e *Environment) Set(name string, value Object) Object {
 
 func (e *Environment) Contains(name string) bool {
 	_, ok := e.store[name]
+	if !ok && e.outer != nil {
+		_, ok = e.outer.Get(name)
+	}
 	return ok
 }

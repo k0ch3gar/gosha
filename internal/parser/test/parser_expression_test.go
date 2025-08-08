@@ -176,9 +176,9 @@ if x < y {
 		t.Fatalf("program.Statements[0] is not ast.ExpressionStatement. got=%T", program.Statements[0])
 	}
 
-	expression, ok := stmt.Expression.(*ast.IfExpression)
+	expression, ok := stmt.Expression.(*ast.IfStatement)
 	if !ok {
-		t.Fatalf("stmt.Expression is not ast.IfExpression. got=%T", stmt.Expression)
+		t.Fatalf("stmt.Expression is not ast.IfStatement. got=%T", stmt.Expression)
 	}
 
 	if !testInfixExpression(t, expression.Condition, "x", "<", "y") {

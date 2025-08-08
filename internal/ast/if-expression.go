@@ -2,25 +2,26 @@ package ast
 
 import (
 	"bytes"
+
 	"kstmc.com/gosha/internal/token"
 )
 
-type IfExpression struct {
+type IfStatement struct {
 	Token       token.Token
 	Condition   Expression
 	Consequence *BlockStatement
 	Alternative *BlockStatement
 }
 
-func (ie *IfExpression) expressionNode() {
+func (ie *IfStatement) statementNode() {
 
 }
 
-func (ie *IfExpression) TokenLiteral() string {
+func (ie *IfStatement) TokenLiteral() string {
 	return ie.Token.Literal
 }
 
-func (ie *IfExpression) String() string {
+func (ie *IfStatement) String() string {
 	var out bytes.Buffer
 
 	out.WriteString(ie.Token.Literal)

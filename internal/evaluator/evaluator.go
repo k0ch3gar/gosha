@@ -26,6 +26,17 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return &object.ReturnValue{Value: val}
 	case *ast.Program:
 		return evalProgram(node, env)
+	case *ast.AssignStatement:
+		val := Eval(node.Value, env)
+		if isError(val) {
+			return val
+		}
+
+		if !env.Contains(node.Name.Value) {
+			return newError("unknown variable: %q", node.Name.Value)
+		}
+
+		env.Set(node.Name.Value, val)
 	case *ast.VarStatement:
 		val := Eval(node.Value, env)
 		if isError(val) {
@@ -52,7 +63,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		return applyFunction(function, args)
-	case *ast.IfExpression:
+	case *ast.IfStatement:
 		return evalIfExpression(node, env)
 	case *ast.BlockStatement:
 		return evalBlockStatement(node, env)
@@ -190,7 +201,7 @@ func isError(obj object.Object) bool {
 	return false
 }
 
-func evalIfExpression(ie *ast.IfExpression, env *object.Environment) object.Object {
+func evalIfExpression(ie *ast.IfStatement, env *object.Environment) object.Object {
 	condition := Eval(ie.Condition, env)
 	if isError(condition) {
 		return condition

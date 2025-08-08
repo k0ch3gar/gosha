@@ -2,10 +2,11 @@ package parser
 
 import (
 	"fmt"
+	"strconv"
+
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
 	"kstmc.com/gosha/internal/token"
-	"strconv"
 )
 
 const (
@@ -23,6 +24,7 @@ const (
 
 var (
 	VOID = &ast.DataType{Token: token.Token{Type: token.DTYPE, Literal: "void"}, Name: "void"}
+	ANY  = &ast.DataType{Token: token.Token{Type: token.DTYPE, Literal: "any"}, Name: "any"}
 )
 
 var precedences = map[token.TokenType]int{
@@ -65,7 +67,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
-	p.registerPrefix(token.IF, p.parseIfExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
@@ -213,8 +214,8 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	return idents
 }
 
-func (p *Parser) parseIfExpression() ast.Expression {
-	expression := &ast.IfExpression{Token: p.curToken}
+func (p *Parser) parseIfStatement() ast.Statement {
+	expression := &ast.IfStatement{Token: p.curToken}
 
 	p.nextToken()
 	expression.Condition = p.parseExpression(LOWEST)
@@ -297,8 +298,9 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	}
 
 	stmt.Name = &ast.Identifier{
-		Token: p.curToken,
-		Value: p.curToken.Literal,
+		Token:    p.curToken,
+		Value:    p.curToken.Literal,
+		DataType: ANY,
 	}
 
 	if p.peekTokenIs(token.DTYPE) {
@@ -326,6 +328,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseVarStatement()
 	//case token.CALL:
 	//	return p.parseCallStatement()
+	case token.IF:
+		return p.parseIfStatement()
 	case token.SEMICOLON:
 		return nil
 	case token.NLINE:
