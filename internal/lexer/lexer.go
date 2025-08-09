@@ -55,6 +55,9 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.ASTERISK, l.ch)
 	case '<':
 		tok = newToken(token.LT, l.ch)
+	case '"':
+		tok.Literal = l.readString()
+		tok.Type = token.STRING
 	case ':':
 		if l.peekChar() == '=' {
 			ch := string(l.ch)
@@ -124,6 +127,16 @@ func (l *Lexer) NextToken() token.Token {
 
 func newToken(tokenType token.TokenType, ch byte) token.Token {
 	return token.Token{Type: tokenType, Literal: string(ch)}
+}
+
+func (l *Lexer) readString() string {
+	position := l.position + 1
+	l.readCh()
+	for l.ch != '"' && l.ch != 0 {
+		l.readCh()
+	}
+
+	return l.input[position:l.position]
 }
 
 func (l *Lexer) readIdentifier() string {

@@ -50,7 +50,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return newError("variable with such name already exists: %q", node.Name.Value)
 		}
 
-		if node.Name.DataType.Name == parser.ANY.Name {
+		if node.Name.DataType != nil && node.Name.DataType.Name == parser.ANY.Name {
 			env.Set(node.Name.Value, &object.Any{Value: val.Inspect()})
 		} else {
 			env.Set(node.Name.Value, val)
@@ -82,6 +82,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return applyFunction(function, args)
 	case *ast.IfStatement:
 		return evalIfExpression(node, env)
+	case *ast.StringLiteral:
+		return &object.String{Value: node.Value}
 	case *ast.BlockStatement:
 		return evalBlockStatement(node, env)
 	case *ast.Boolean:
@@ -257,11 +259,24 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 		return rawBooleanToBooleanObject(left != right)
 	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
 		return evalBooleanInfixExpression(operator, left, right)
+	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
+		return evalStringInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
 	default:
 		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
 	}
+}
+
+func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
+	if operator != "+" {
+		return newError("unsupported operator: %s %s %s", left.Type(), operator, right.Type())
+	}
+
+	leftVal := left.(*object.String).Value
+	rightVal := right.(*object.String).Value
+
+	return &object.String{Value: leftVal + rightVal}
 }
 
 func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {

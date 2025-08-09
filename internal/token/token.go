@@ -25,6 +25,8 @@ const (
 	AND = "&&"
 	OR  = "||"
 
+	STRING = `"`
+
 	ASSIGN     = "="
 	INITASSIGN = ":="
 	PLUS       = "+"

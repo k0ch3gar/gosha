@@ -80,7 +80,13 @@ func analyzeInitAssignStatement(stmt *ast.InitAssignStatement, env *object.Envir
 }
 
 func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []string {
-	identType := RawTypeToObj(stmt.Name.DataType.Name).Type()
+	var identType object.ObjectType
+	if stmt.Name.DataType != nil {
+		identType = RawTypeToObj(stmt.Name.DataType.Name).Type()
+	} else {
+		identType = object.ANY_OBJ
+	}
+
 	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
 		return errors
@@ -133,6 +139,8 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (object.Obj
 		return analyzeCallExpression(expr, env)
 	case *ast.PrefixExpression:
 		return analyzePrefixExpression(expr, env)
+	case *ast.StringLiteral:
+		return object.STRING_OBJ, errors
 	case *ast.InfixExpression:
 		return analyzeInfixExpression(expr, env)
 	case *ast.FunctionLiteral:
@@ -245,6 +253,8 @@ func RawTypeToObj(rawType string) object.Object {
 		return &object.Boolean{}
 	case "nil":
 		return &object.Nil{}
+	case "string":
+		return &object.String{}
 	case "any":
 		return &object.Any{}
 	default:
@@ -366,6 +376,8 @@ func analyzePlusInfixOperator(leftType, rightType object.ObjectType) (object.Obj
 	switch {
 	case leftType == object.INTEGER_OBJ && rightType == object.INTEGER_OBJ:
 		return object.INTEGER_OBJ, nil
+	case leftType == object.STRING_OBJ && rightType == object.STRING_OBJ:
+		return object.STRING_OBJ, nil
 	default:
 		msg := fmt.Sprintf("analyzer error. unsupported expression type for '+' operator %s", rightType)
 		errors := []string{msg}

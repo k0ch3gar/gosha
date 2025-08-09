@@ -1,8 +1,10 @@
 package parser
 
 import (
+	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
@@ -68,6 +70,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.TRUE, p.parseBoolean)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
+	p.registerPrefix(token.STRING, p.parseStringLiteral)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.OR, p.parseInfixExpression)
@@ -86,6 +89,15 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken()
 
 	return p
+}
+
+func (p *Parser) parseStringLiteral() ast.Expression {
+	expression := &ast.StringLiteral{
+		Token: p.curToken,
+		Value: p.curToken.Literal,
+	}
+
+	return expression
 }
 
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
@@ -139,9 +151,9 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	lit.Parameters = p.parseFunctionParameters()
 	lit.ReturnType = VOID
 
-	if p.peekTokenIs(token.DTYPE) {
+	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
 		p.nextToken()
-		lit.ReturnType = &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
+		lit.ReturnType = p.parseDataType()
 	}
 
 	if !p.expectPeek(token.LBRACE) {
@@ -300,10 +312,10 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt.Name = &ast.Identifier{
 		Token:    p.curToken,
 		Value:    p.curToken.Literal,
-		DataType: ANY,
+		DataType: nil,
 	}
 
-	if p.peekTokenIs(token.DTYPE) {
+	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
 		p.nextToken()
 
 		stmt.Name.DataType = &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
@@ -318,6 +330,56 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	stmt.Value = p.parseExpression(LOWEST)
 
 	return stmt
+}
+
+func (p *Parser) parseDataType() *ast.DataType {
+	if p.curTokenIs(token.DTYPE) {
+		return &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
+	}
+
+	if !p.curTokenIs(token.FUNCTION) {
+		return nil
+	}
+
+	dType := &ast.DataType{Token: p.curToken}
+	var funcSignature bytes.Buffer
+	if !p.expectPeek(token.LPAREN) {
+		return nil
+	}
+
+	funcSignature.WriteString("func(")
+	var params []string
+	for !p.curTokenIs(token.EOF) && !p.curTokenIs(token.RPAREN) {
+		p.nextToken()
+		param := p.parseDataType()
+		if param == nil {
+			return nil
+		}
+
+		params = append(params, param.Name)
+		p.nextToken()
+	}
+
+	funcSignature.WriteString(strings.Join(params, ", "))
+
+	if !p.curTokenIs(token.RPAREN) {
+		return nil
+	}
+
+	funcSignature.WriteString(") ")
+
+	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
+		p.nextToken()
+		returnType := p.parseDataType()
+		if returnType == nil {
+
+		} else {
+			funcSignature.WriteString(returnType.Name)
+		}
+	}
+
+	dType.Name = funcSignature.String()
+	return dType
 }
 
 func (p *Parser) parseStatement() ast.Statement {
