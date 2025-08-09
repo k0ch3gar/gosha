@@ -1,5 +1,9 @@
 package token
 
+import (
+	"os"
+)
+
 type TokenType string
 
 type Token struct {
@@ -44,6 +48,8 @@ const (
 
 	NLINE = "\n"
 
+	BASH = "$"
+
 	// Keywords
 
 	FUNCTION = "FUNC"
@@ -70,6 +76,19 @@ var keywords = map[string]TokenType{
 	"bool":   DTYPE,
 	"any":    DTYPE,
 	"echo":   CALL,
+}
+
+func SetupBashCalls() error {
+	files, err := os.ReadDir("/usr/bin/")
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		keywords[file.Name()] = BASH
+	}
+
+	return nil
 }
 
 func FindIdent(ident string) TokenType {

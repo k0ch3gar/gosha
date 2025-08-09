@@ -111,6 +111,10 @@ func (l *Lexer) NextToken() token.Token {
 		if isLetter(l.ch) {
 			tok.Literal = l.readIdentifier()
 			tok.Type = token.FindIdent(tok.Literal)
+			if tok.Type == token.BASH && l.ch != 0 {
+				tok.Literal += " " + l.readBash()
+			}
+
 			return tok
 		} else if isDigit(l.ch) {
 			tok.Type = token.INT
@@ -123,6 +127,16 @@ func (l *Lexer) NextToken() token.Token {
 
 	l.readCh()
 	return tok
+}
+
+func (l *Lexer) readBash() string {
+	position := l.position + 1
+	l.readCh()
+	for l.ch != '\n' && l.ch != ';' && l.ch != 0 {
+		l.readCh()
+	}
+
+	return l.input[position:l.position]
 }
 
 func newToken(tokenType token.TokenType, ch byte) token.Token {

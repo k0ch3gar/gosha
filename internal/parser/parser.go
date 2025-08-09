@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
@@ -74,6 +75,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
+	p.registerPrefix(token.BASH, p.parseBashExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.OR, p.parseInfixExpression)
@@ -467,6 +469,15 @@ func (p *Parser) parseInitAssignStatement() *ast.InitAssignStatement {
 	stmt.Value = p.parseExpression(LOWEST)
 
 	return stmt
+}
+
+func (p *Parser) parseBashExpression() ast.Expression {
+	bashExpr := &ast.BashExpression{
+		Token: p.curToken,
+		Value: strings.Fields(p.curToken.Literal),
+	}
+
+	return bashExpr
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {

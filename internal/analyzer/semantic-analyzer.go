@@ -12,7 +12,7 @@ func AnalyzeProgram(node *ast.Program, env *object.Environment) []string {
 	env = object.NewEnclosedEnvironment(env)
 	var errors []string
 	for _, stmt := range node.Statements {
-		errors = append(errors, analyzeStatement(stmt, parser.ANY, env)...)
+		errors = append(errors, AnalyzeStatement(stmt, parser.ANY, env)...)
 	}
 
 	return errors
@@ -21,13 +21,13 @@ func AnalyzeProgram(node *ast.Program, env *object.Environment) []string {
 func analyzeBlockStatement(node *ast.BlockStatement, returnType ast.DataType, env *object.Environment) []string {
 	var errors []string
 	for _, stmt := range node.Statements {
-		errors = append(errors, analyzeStatement(stmt, returnType, env)...)
+		errors = append(errors, AnalyzeStatement(stmt, returnType, env)...)
 	}
 
 	return errors
 }
 
-func analyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.Environment) []string {
+func AnalyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.Environment) []string {
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
 		return analyzeExpressionStatement(stmt, env)
@@ -127,6 +127,8 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (ast.DataTy
 		return parser.INT, errors
 	case *ast.Boolean:
 		return parser.BOOLEAN, errors
+	case *ast.BashExpression:
+		return parser.STRING, errors
 	case *ast.Identifier:
 		obj, ok := env.Get(expr.Value)
 		if !ok {

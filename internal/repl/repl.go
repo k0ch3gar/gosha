@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 
-	"kstmc.com/gosha/internal/analyzer"
 	"kstmc.com/gosha/internal/evaluator"
 	"kstmc.com/gosha/internal/lexer"
 	"kstmc.com/gosha/internal/object"
@@ -58,12 +57,6 @@ func processInput(out io.Writer, input string, env *object.Environment) {
 	program := p.ParseProgram()
 	if len(p.Errors()) != 0 {
 		printParserErrors(out, p.Errors())
-		return
-	}
-
-	errors := analyzer.AnalyzeProgram(program, env)
-	if len(errors) != 0 {
-		printParserErrors(out, errors)
 		return
 	}
 

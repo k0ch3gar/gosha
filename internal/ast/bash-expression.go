@@ -2,12 +2,15 @@ package ast
 
 import (
 	"bytes"
+	"strings"
+
 	"kstmc.com/gosha/internal/token"
 )
 
 type BashExpression struct {
 	Token token.Token
-	Value string
+
+	Value []string
 }
 
 func (be *BashExpression) expressionNode() {
@@ -23,7 +26,7 @@ func (be *BashExpression) String() string {
 
 	out.WriteString(be.TokenLiteral())
 	out.WriteString("(")
-	out.WriteString(be.Value)
+	out.WriteString(strings.Join(be.Value, " "))
 	out.WriteString(")")
 
 	return out.String()

@@ -2,7 +2,10 @@ package evaluator
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
 
+	"kstmc.com/gosha/internal/analyzer"
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/object"
 	"kstmc.com/gosha/internal/parser"
@@ -104,6 +107,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		return function
+	case *ast.BashExpression:
+		return evalBashExpression(node, env)
 	case *ast.PrefixExpression:
 		right := Eval(node.Right, env)
 		if isError(right) {
@@ -132,6 +137,11 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	var result object.Object
 
 	for _, statement := range program.Statements {
+		errors := analyzer.AnalyzeStatement(statement, parser.ANY, env)
+		if len(errors) != 0 {
+			return newError("analyzer error %s", errors[0])
+		}
+
 		result = Eval(statement, env)
 
 		switch result := result.(type) {
@@ -143,6 +153,25 @@ func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	}
 
 	return result
+}
+
+func evalBashExpression(expr *ast.BashExpression, env *object.Environment) object.Object {
+	var bashArgs []string
+	for _, arg := range expr.Value {
+		if arg[0] == '$' && env.Contains(arg[1:]) {
+			arg, _ := env.Get(arg[1:])
+			bashArgs = append(bashArgs, arg.Inspect())
+		} else {
+			bashArgs = append(bashArgs, arg)
+		}
+	}
+
+	result, err := exec.Command("bash", "-c", strings.Join(bashArgs, " ")).Output()
+	if err != nil {
+		return newError("bash error %s", err.Error())
+	}
+
+	return &object.String{Value: string(result)}
 }
 
 func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
