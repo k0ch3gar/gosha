@@ -1,10 +1,8 @@
 package parser
 
 import (
-	"bytes"
 	"fmt"
 	"strconv"
-	"strings"
 
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
@@ -25,8 +23,13 @@ const (
 )
 
 var (
-	VOID = &ast.DataType{Token: token.Token{Type: token.DTYPE, Literal: "void"}, Name: "void"}
-	ANY  = &ast.DataType{Token: token.Token{Type: token.DTYPE, Literal: "any"}, Name: "any"}
+	NIL     = &ast.NilDataType{}
+	ANY     = &ast.AnyDataType{}
+	INT     = &ast.IntegerDataType{}
+	STRING  = &ast.StringDataType{}
+	BOOLEAN = &ast.BooleanDataType{}
+	RETURN  = &ast.ReturnDataType{}
+	ERROR   = &ast.ErrorDataType{}
 )
 
 var precedences = map[token.TokenType]int{
@@ -149,7 +152,7 @@ func (p *Parser) parseFunctionLiteral() ast.Expression {
 	}
 
 	lit.Parameters = p.parseFunctionParameters()
-	lit.ReturnType = VOID
+	lit.ReturnType = NIL
 
 	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
 		p.nextToken()
@@ -175,7 +178,7 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 	p.nextToken()
 
-	dataType := &ast.DataType{Name: token.ILLEGAL}
+	var dataType *ast.DataType = new(ast.DataType)
 
 	ident := &ast.Identifier{
 		Token:    p.curToken,
@@ -185,9 +188,8 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 	if p.peekTokenIs(token.DTYPE) {
 		p.nextToken()
-		dataType.Token = p.curToken
-		dataType.Name = p.curToken.Literal
-		dataType = &ast.DataType{Name: token.ILLEGAL}
+		*dataType = p.parseDataType()
+		dataType = new(ast.DataType)
 	}
 
 	idents = append(idents, ident)
@@ -205,9 +207,8 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 		if p.peekTokenIs(token.DTYPE) {
 			p.nextToken()
-			dataType.Token = p.curToken
-			dataType.Name = p.curToken.Literal
-			dataType = &ast.DataType{Name: token.ILLEGAL}
+			*dataType = p.parseDataType()
+			dataType = new(ast.DataType)
 		}
 
 		idents = append(idents, ident)
@@ -217,7 +218,7 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 		return nil
 	}
 
-	if idents[len(idents)-1].DataType.Name == token.ILLEGAL {
+	if idents[len(idents)-1].DataType == nil {
 		msg := fmt.Sprintf("expected parameter type for %s", idents[len(idents)-1].Value)
 		p.errors = append(p.errors, msg)
 		return nil
@@ -318,7 +319,8 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
 		p.nextToken()
 
-		stmt.Name.DataType = &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
+		dType := p.parseDataType()
+		stmt.Name.DataType = &dType
 	}
 
 	if !p.expectPeek(token.ASSIGN) {
@@ -332,53 +334,61 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	return stmt
 }
 
-func (p *Parser) parseDataType() *ast.DataType {
+func rawTypeToDataType(raw string) ast.DataType {
+	switch raw {
+	case "string":
+		return STRING
+	case "int":
+		return INT
+	case "bool":
+		return BOOLEAN
+	case "any":
+		return ANY
+	default:
+		return NIL
+	}
+}
+
+func (p *Parser) parseDataType() ast.DataType {
 	if p.curTokenIs(token.DTYPE) {
-		return &ast.DataType{Token: p.curToken, Name: p.curToken.Literal}
+		return rawTypeToDataType(p.curToken.Literal)
 	}
 
 	if !p.curTokenIs(token.FUNCTION) {
 		return nil
 	}
 
-	dType := &ast.DataType{Token: p.curToken}
-	var funcSignature bytes.Buffer
+	dType := &ast.FunctionDataType{}
 	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
 
-	funcSignature.WriteString("func(")
-	var params []string
+	p.nextToken()
 	for !p.curTokenIs(token.EOF) && !p.curTokenIs(token.RPAREN) {
-		p.nextToken()
 		param := p.parseDataType()
 		if param == nil {
 			return nil
 		}
 
-		params = append(params, param.Name)
+		dType.Parameters = append(dType.Parameters, p.parseDataType())
+		p.nextToken()
 		p.nextToken()
 	}
-
-	funcSignature.WriteString(strings.Join(params, ", "))
 
 	if !p.curTokenIs(token.RPAREN) {
 		return nil
 	}
 
-	funcSignature.WriteString(") ")
-
 	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
 		p.nextToken()
 		returnType := p.parseDataType()
 		if returnType == nil {
-
+			dType.ReturnValue = NIL
 		} else {
-			funcSignature.WriteString(returnType.Name)
+			dType.ReturnValue = returnType
 		}
 	}
 
-	dType.Name = funcSignature.String()
 	return dType
 }
 

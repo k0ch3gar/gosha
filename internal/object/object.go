@@ -1,5 +1,7 @@
 package object
 
+import "kstmc.com/gosha/internal/ast"
+
 type ObjectType string
 
 const (
@@ -14,6 +16,6 @@ const (
 )
 
 type Object interface {
-	Type() ObjectType
+	Type() ast.DataType
 	Inspect() string
 }

@@ -1,11 +1,16 @@
 package object
 
+import (
+	"kstmc.com/gosha/internal/ast"
+	"kstmc.com/gosha/internal/parser"
+)
+
 type ReturnValue struct {
 	Value Object
 }
 
-func (rv *ReturnValue) Type() ObjectType {
-	return RETURN_VALUE_OBJ
+func (rv *ReturnValue) Type() ast.DataType {
+	return parser.RETURN
 }
 
 func (rv *ReturnValue) Inspect() string {

@@ -2,8 +2,9 @@ package ast
 
 import (
 	"bytes"
-	"kstmc.com/gosha/internal/token"
 	"strings"
+
+	"kstmc.com/gosha/internal/token"
 )
 
 type FunctionLiteral struct {
@@ -11,7 +12,7 @@ type FunctionLiteral struct {
 	Name       *Identifier
 	Parameters []*Identifier
 	Body       *BlockStatement
-	ReturnType *DataType
+	ReturnType DataType
 }
 
 func (fl *FunctionLiteral) expressionNode() {
@@ -38,7 +39,7 @@ func (fl *FunctionLiteral) String() string {
 	out.WriteString("(")
 	out.WriteString(strings.Join(params, ", "))
 	out.WriteString(") ")
-	out.WriteString(fl.ReturnType.Token.Literal)
+	out.WriteString(fl.ReturnType.Name())
 	out.WriteString(" ")
 	out.WriteString(fl.Body.String())
 

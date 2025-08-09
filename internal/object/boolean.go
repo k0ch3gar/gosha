@@ -1,13 +1,18 @@
 package object
 
-import "fmt"
+import (
+	"fmt"
+
+	"kstmc.com/gosha/internal/ast"
+	"kstmc.com/gosha/internal/parser"
+)
 
 type Boolean struct {
 	Value bool
 }
 
-func (b *Boolean) Type() ObjectType {
-	return BOOLEAN_OBJ
+func (b *Boolean) Type() ast.DataType {
+	return parser.BOOLEAN
 }
 
 func (b *Boolean) Inspect() string {

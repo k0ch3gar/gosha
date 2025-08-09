@@ -2,7 +2,6 @@ package evaluator
 
 import (
 	"fmt"
-	"strconv"
 
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/object"
@@ -50,7 +49,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return newError("variable with such name already exists: %q", node.Name.Value)
 		}
 
-		if node.Name.DataType != nil && node.Name.DataType.Name == parser.ANY.Name {
+		if node.Name.DataType != nil && (*node.Name.DataType).Name() == parser.ANY.Name() {
 			env.Set(node.Name.Value, &object.Any{Value: val.Inspect()})
 		} else {
 			env.Set(node.Name.Value, val)
@@ -97,7 +96,11 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		name := node.Name
 		function := &object.Function{Parameters: params, Env: env, Body: body, ReturnType: returnType, Name: name}
 		if name != nil {
-			env.Set(name.Value, function)
+			if env.Contains(name.Value) {
+				return newError("function %s already exists", name.Value)
+			} else {
+				env.Set(name.Value, function)
+			}
 		}
 
 		return function
@@ -123,20 +126,6 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	}
 
 	return NIL
-}
-
-func makeObject(objType object.ObjectType, val string) object.Object {
-	switch objType {
-	case object.INTEGER_OBJ:
-		valInt, _ := strconv.ParseInt(val, 10, 64)
-		return &object.Integer{Value: valInt}
-	case object.BOOLEAN_OBJ:
-		return &object.Boolean{Value: val == "true"}
-	case object.ANY_OBJ:
-		return &object.Any{Value: val}
-	default:
-		return NIL
-	}
 }
 
 func evalProgram(program *ast.Program, env *object.Environment) object.Object {
@@ -217,7 +206,7 @@ func evalBlockStatement(bs *ast.BlockStatement, env *object.Environment) object.
 
 		if result != nil {
 			rt := result.Type()
-			if rt == object.RETURN_VALUE_OBJ || rt == object.ERROR_OBJ {
+			if rt == parser.RETURN || rt == parser.ERROR {
 				return result
 			}
 		}
@@ -228,7 +217,7 @@ func evalBlockStatement(bs *ast.BlockStatement, env *object.Environment) object.
 
 func isError(obj object.Object) bool {
 	if obj != nil {
-		return obj.Type() == object.ERROR_OBJ
+		return obj.Type() == parser.ERROR
 	}
 
 	return false
@@ -251,15 +240,15 @@ func evalIfExpression(ie *ast.IfStatement, env *object.Environment) object.Objec
 
 func evalInfixExpression(operator string, left, right object.Object) object.Object {
 	switch {
-	case left.Type() == object.INTEGER_OBJ && right.Type() == object.INTEGER_OBJ:
+	case left.Type() == parser.INT && right.Type() == parser.INT:
 		return evalIntegerInfixExpression(operator, left, right)
 	case operator == token.EQ:
 		return rawBooleanToBooleanObject(left == right)
 	case operator == token.NEQ:
 		return rawBooleanToBooleanObject(left != right)
-	case left.Type() == object.BOOLEAN_OBJ && right.Type() == object.BOOLEAN_OBJ:
+	case left.Type() == parser.BOOLEAN && right.Type() == parser.BOOLEAN:
 		return evalBooleanInfixExpression(operator, left, right)
-	case left.Type() == object.STRING_OBJ && right.Type() == object.STRING_OBJ:
+	case left.Type() == parser.STRING && right.Type() == parser.STRING:
 		return evalStringInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
@@ -333,7 +322,7 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 }
 
 func evalMinusPrefixOperatorExpression(right object.Object) object.Object {
-	if right.Type() != object.INTEGER_OBJ {
+	if right.Type() != parser.INT {
 		return newError("unknown operator: -%s", right.Type())
 	}
 

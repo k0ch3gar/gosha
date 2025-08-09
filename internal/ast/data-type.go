@@ -1,8 +1,80 @@
 package ast
 
-import "kstmc.com/gosha/internal/token"
+import (
+	"bytes"
+	"strings"
+)
 
-type DataType struct {
-	Token token.Token
-	Name  string
+type DataType interface {
+	Name() string
+}
+
+type IntegerDataType struct {
+}
+
+func (idt *IntegerDataType) Name() string {
+	return "int"
+}
+
+type StringDataType struct {
+}
+
+func (sdt *StringDataType) Name() string {
+	return "string"
+}
+
+type BooleanDataType struct {
+}
+
+func (bdt *BooleanDataType) Name() string {
+	return "bool"
+}
+
+type NilDataType struct {
+}
+
+func (ndt *NilDataType) Name() string {
+	return "nil"
+}
+
+type AnyDataType struct {
+}
+
+func (adt *AnyDataType) Name() string {
+	return "any"
+}
+
+type FunctionDataType struct {
+	Parameters  []DataType
+	ReturnValue DataType
+}
+
+func (fdt *FunctionDataType) Name() string {
+	var out bytes.Buffer
+
+	out.WriteString("func(")
+	var paramsTemp []string
+	for _, param := range fdt.Parameters {
+		paramsTemp = append(paramsTemp, param.Name())
+	}
+
+	out.WriteString(strings.Join(paramsTemp, ", "))
+	out.WriteString(") ")
+	out.WriteString(fdt.ReturnValue.Name())
+
+	return out.String()
+}
+
+type ReturnDataType struct {
+}
+
+func (rdt *ReturnDataType) Name() string {
+	return "return"
+}
+
+type ErrorDataType struct {
+}
+
+func (edt *ErrorDataType) Name() string {
+	return "error"
 }

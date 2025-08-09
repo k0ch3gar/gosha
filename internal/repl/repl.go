@@ -68,7 +68,7 @@ func processInput(out io.Writer, input string, env *object.Environment) {
 	}
 
 	evaluated := evaluator.Eval(program, env)
-	if evaluated != nil && evaluated.Type() != object.NIL_OBJ {
+	if evaluated != nil && evaluated.Type() != parser.NIL {
 		io.WriteString(out, evaluated.Inspect())
 		io.WriteString(out, "\n")
 	}
