@@ -369,19 +369,29 @@ func (p *Parser) parseDataType() ast.DataType {
 		return nil
 	}
 
-	p.nextToken()
-	for !p.curTokenIs(token.EOF) && !p.curTokenIs(token.RPAREN) {
+	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
+		p.nextToken()
 		param := p.parseDataType()
 		if param == nil {
 			return nil
 		}
 
-		dType.Parameters = append(dType.Parameters, p.parseDataType())
+		dType.Parameters = append(dType.Parameters, param)
+	}
+
+	for p.peekTokenIs(token.COMMA) {
 		p.nextToken()
+		p.nextToken()
+		param := p.parseDataType()
+		if param == nil {
+			return nil
+		}
+
+		dType.Parameters = append(dType.Parameters, param)
 		p.nextToken()
 	}
 
-	if !p.curTokenIs(token.RPAREN) {
+	if !p.expectPeek(token.RPAREN) {
 		return nil
 	}
 
