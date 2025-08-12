@@ -53,16 +53,21 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 
 		env.Update(node.Name.Value, val)
 	case *ast.VarStatement:
-		val := Eval(node.Value, env)
-		if isError(val) {
-			return val
+		var val object.Object
+		if node.Value != nil {
+			val = Eval(node.Value, env)
+			if isError(val) {
+				return val
+			}
 		}
 
 		if env.Contains(node.Name.Value) {
 			return newError("variable with such name already exists: %q", node.Name.Value)
 		}
 
-		if node.Name.DataType != nil && (*node.Name.DataType).Name() == parser.ANY.Name() {
+		if val == nil && node.Name.DataType != nil {
+			env.Set(node.Name.Value, analyzer.RawTypeToObj(*node.Name.DataType))
+		} else if node.Name.DataType != nil && (*node.Name.DataType).Name() == parser.ANY.Name() {
 			env.Set(node.Name.Value, &object.Any{Value: val.Inspect()})
 		} else {
 			env.Set(node.Name.Value, val)

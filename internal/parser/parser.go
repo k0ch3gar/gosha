@@ -329,13 +329,12 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 		stmt.Name.DataType = &dType
 	}
 
-	if !p.expectPeek(token.ASSIGN) {
-		return nil
+	if p.peekTokenIs(token.ASSIGN) {
+		p.nextToken()
+		stmt.Value = p.parseExpression(LOWEST)
 	}
 
 	p.nextToken()
-
-	stmt.Value = p.parseExpression(LOWEST)
 
 	return stmt
 }

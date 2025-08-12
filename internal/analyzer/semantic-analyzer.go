@@ -101,6 +101,10 @@ func analyzeInitAssignStatement(stmt *ast.InitAssignStatement, env *object.Envir
 }
 
 func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []string {
+	if stmt.Value == nil {
+		return nil
+	}
+
 	var identType ast.DataType
 	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
