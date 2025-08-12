@@ -68,6 +68,8 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	case '>':
 		tok = newToken(token.GT, l.ch)
+	case '%':
+		tok = newToken(token.PERCENT, l.ch)
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case '(':
@@ -78,6 +80,14 @@ func (l *Lexer) NextToken() token.Token {
 		tok = newToken(token.NLINE, l.ch)
 	case '#':
 		tok = newToken(token.HASH, l.ch)
+	case '$':
+		if l.peekChar() == '(' {
+			l.readCh()
+			tok.Literal = l.readBash()
+			tok.Type = token.BASH
+		} else {
+			tok = newToken(token.ILLEGAL, l.ch)
+		}
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
 	case '&':
@@ -97,7 +107,13 @@ func (l *Lexer) NextToken() token.Token {
 			tok = newToken(token.PIPE, l.ch)
 		}
 	case '-':
-		tok = newToken(token.MINUS, l.ch)
+		if l.peekChar() == 'f' {
+			ch := string(l.ch)
+			l.readCh()
+			tok = token.Token{Type: token.FOPER, Literal: ch + string(l.ch)}
+		} else {
+			tok = newToken(token.MINUS, l.ch)
+		}
 	case '+':
 		tok = newToken(token.PLUS, l.ch)
 	case '{':
@@ -111,10 +127,6 @@ func (l *Lexer) NextToken() token.Token {
 		if isLetter(l.ch) {
 			tok.Literal = l.readIdentifier()
 			tok.Type = token.FindIdent(tok.Literal)
-			if tok.Type == token.BASH && l.ch != 0 {
-				tok.Literal += " " + l.readBash()
-			}
-
 			return tok
 		} else if isDigit(l.ch) {
 			tok.Type = token.INT
@@ -132,8 +144,20 @@ func (l *Lexer) NextToken() token.Token {
 func (l *Lexer) readBash() string {
 	position := l.position + 1
 	l.readCh()
-	for l.ch != '\n' && l.ch != ';' && l.ch != 0 {
-		l.readCh()
+	braceCount := 1
+	for braceCount > 0 && l.ch != 0 {
+		switch l.ch {
+		case '(':
+			braceCount++
+		case ')':
+			braceCount--
+		}
+
+		if braceCount > 0 && l.ch != 0 {
+			l.readCh()
+		} else {
+			break
+		}
 	}
 
 	return l.input[position:l.position]

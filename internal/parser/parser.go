@@ -31,6 +31,7 @@ var (
 	BOOLEAN = &ast.BooleanDataType{}
 	RETURN  = &ast.ReturnDataType{}
 	ERROR   = &ast.ErrorDataType{}
+	BUILTIN = &ast.BuiltinDataType{}
 )
 
 var precedences = map[token.TokenType]int{
@@ -42,6 +43,7 @@ var precedences = map[token.TokenType]int{
 	token.GT:       LESSGREATER,
 	token.PLUS:     SUM,
 	token.MINUS:    SUM,
+	token.PERCENT:  SUM,
 	token.SLASH:    PRODUCT,
 	token.ASTERISK: PRODUCT,
 	token.LPAREN:   CALL,
@@ -69,6 +71,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
+	p.registerPrefix(token.FOPER, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
 	p.registerPrefix(token.FALSE, p.parseBoolean)
 	p.registerPrefix(token.TRUE, p.parseBoolean)
@@ -89,6 +92,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
+	p.registerInfix(token.PERCENT, p.parseInfixExpression)
 
 	p.nextToken()
 	p.nextToken()
@@ -385,9 +389,9 @@ func (p *Parser) parseDataType() ast.DataType {
 		p.nextToken()
 		returnType := p.parseDataType()
 		if returnType == nil {
-			dType.ReturnValue = NIL
+			dType.ReturnType = NIL
 		} else {
-			dType.ReturnValue = returnType
+			dType.ReturnType = returnType
 		}
 	}
 
@@ -400,8 +404,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseCommentStatement()
 	case token.VAR:
 		return p.parseVarStatement()
-	//case token.CALL:
-	//	return p.parseCallStatement()
+	case token.FOR:
+		return p.parseForStatement()
 	case token.IF:
 		return p.parseIfStatement()
 	case token.SEMICOLON:
@@ -421,6 +425,23 @@ func (p *Parser) parseStatement() ast.Statement {
 	default:
 		return p.parseExpressionStatement()
 	}
+}
+
+func (p *Parser) parseForStatement() ast.Statement {
+	forStmt := &ast.ForStatement{
+		Token: p.curToken,
+	}
+
+	p.nextToken()
+	forStmt.Condition = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	forStmt.Consequence = p.parseBlockStatement()
+	p.nextToken()
+	return forStmt
 }
 
 func (p *Parser) parseCommentStatement() ast.Statement {

@@ -33,11 +33,12 @@ const (
 
 	ASSIGN     = "="
 	INITASSIGN = ":="
+	FOPER      = "-f"
 	PLUS       = "+"
 	MINUS      = "-"
-
-	COMMA     = ","
-	SEMICOLON = ";"
+	PERCENT    = "%"
+	COMMA      = ","
+	SEMICOLON  = ";"
 
 	LPAREN = "("
 	RPAREN = ")"
@@ -61,6 +62,8 @@ const (
 	RETURN   = "RETURN"
 	DTYPE    = "DTYPE"
 	CALL     = "CALL"
+	BUILDIN  = "BUILDIN"
+	FOR      = "FOR"
 )
 
 var keywords = map[string]TokenType{
@@ -75,7 +78,7 @@ var keywords = map[string]TokenType{
 	"int":    DTYPE,
 	"bool":   DTYPE,
 	"any":    DTYPE,
-	"echo":   CALL,
+	"for":    FOR,
 }
 
 func SetupBashCalls() error {

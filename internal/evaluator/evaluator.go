@@ -2,8 +2,10 @@ package evaluator
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 
 	"kstmc.com/gosha/internal/analyzer"
 	"kstmc.com/gosha/internal/ast"
@@ -16,6 +18,14 @@ var (
 	NIL   = &object.Nil{}
 	TRUE  = &object.Boolean{Value: true}
 	FALSE = &object.Boolean{Value: false}
+
+	isBashCommandInteractive map[string]bool = map[string]bool{
+		"vi":    true,
+		"vim":   true,
+		"emacs": true,
+		"nano":  true,
+		"links": true,
+	}
 )
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
@@ -41,7 +51,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return newError("unknown variable: %q", node.Name.Value)
 		}
 
-		env.Set(node.Name.Value, val)
+		env.Update(node.Name.Value, val)
 	case *ast.VarStatement:
 		val := Eval(node.Value, env)
 		if isError(val) {
@@ -76,14 +86,21 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return function
 		}
 
+		switch fn := function.(type) {
+		case *object.Builtin:
+			return applyBuiltin(fn, node.Arguments, env)
+		}
+
 		args := evalExpressions(node.Arguments, env)
 		if len(args) == 1 && isError(args[0]) {
 			return args[0]
 		}
 
-		return applyFunction(function, args)
+		return applyFunction(function, args, env)
 	case *ast.IfStatement:
 		return evalIfExpression(node, env)
+	case *ast.ForStatement:
+		return evalForStatement(node, env)
 	case *ast.StringLiteral:
 		return &object.String{Value: node.Value}
 	case *ast.BlockStatement:
@@ -133,11 +150,82 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	return NIL
 }
 
+func applyBuiltin(fn *object.Builtin, args []ast.Expression, env *object.Environment) object.Object {
+	switch fn.Inspect() {
+	case "print":
+		for _, arg := range args {
+			fmt.Print(Eval(arg, env).Inspect())
+		}
+
+		fmt.Println()
+		return &object.Nil{}
+	case "read":
+		if len(args) != 1 {
+			return &object.Error{Message: "to much arguments for read function"}
+		}
+
+		ident, ok := args[0].(*ast.Identifier)
+		if !ok {
+			return newError("expected identifier for readln. got=%T", args[0])
+		}
+
+		obj, ok := env.Get(ident.Value)
+		if !ok {
+			return newError("unknown identifier %s", ident.Value)
+		}
+
+		switch obj := obj.(type) {
+		case *object.String:
+			_, err := fmt.Scan(&obj.Value)
+			if err != nil {
+				return newError(err.Error())
+			}
+		case *object.Integer:
+			_, err := fmt.Scan(&obj.Value)
+			if err != nil {
+				return newError(err.Error())
+			}
+		case *object.Boolean:
+			_, err := fmt.Scan(&obj.Value)
+			if err != nil {
+				return newError(err.Error())
+			}
+		default:
+			return newError("unsupported type %T", obj)
+		}
+
+		env.Update(ident.Value, obj)
+		return &object.Nil{}
+	}
+
+	return newError("unknown built-in function: %s", fn.Inspect())
+}
+
+func evalForStatement(stmt *ast.ForStatement, env *object.Environment) object.Object {
+	for {
+		condition := Eval(stmt.Condition, env)
+		if isError(condition) {
+			return condition
+		}
+
+		if condition == TRUE {
+			result := Eval(stmt.Consequence, env)
+			if result.Type().Name() == parser.RETURN.Name() {
+				return result
+			}
+		} else {
+			return NIL
+		}
+	}
+}
+
 func evalProgram(program *ast.Program, env *object.Environment) object.Object {
 	var result object.Object
 
 	for _, statement := range program.Statements {
+		env = object.NewEnclosedEnvironment(env)
 		errors := analyzer.AnalyzeStatement(statement, parser.ANY, env)
+		env = object.UnwrapEnvironment(env)
 		if len(errors) != 0 {
 			return newError("analyzer error %s", errors[0])
 		}
@@ -166,12 +254,33 @@ func evalBashExpression(expr *ast.BashExpression, env *object.Environment) objec
 		}
 	}
 
-	result, err := exec.Command("bash", "-c", strings.Join(bashArgs, " ")).Output()
-	if err != nil {
-		return newError("bash error %s", err.Error())
+	result, ok := isBashCommandInteractive[bashArgs[0]]
+	if ok && result {
+		cmd := exec.Command("bash", "-c", strings.Join(bashArgs, " "))
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Setsid: true,
+			Ctty:   int(os.Stdin.Fd()),
+		}
+
+		err := cmd.Run()
+
+		if err != nil {
+			return newError("bash error %s", err.Error())
+		}
+	} else {
+		output, err := exec.Command("bash", "-c", strings.Join(bashArgs, " ")).Output()
+		if err != nil {
+			return newError("bash error %s", err.Error())
+		}
+
+		return &object.String{Value: string(output)}
 	}
 
-	return &object.String{Value: string(result)}
+	return &object.String{Value: ""}
 }
 
 func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Object {
@@ -189,15 +298,16 @@ func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Ob
 	return result
 }
 
-func applyFunction(fn object.Object, args []object.Object) object.Object {
-	function, ok := fn.(*object.Function)
-	if !ok {
-		return newError("not a function: %s", fn.Type())
+func applyFunction(fn object.Object, args []object.Object, env *object.Environment) object.Object {
+	switch fn := fn.(type) {
+	case *object.Function:
+		extendedEnv := extendFunctionEnv(fn, args)
+		evaluated := Eval(fn.Body, extendedEnv)
+		return unwrapReturnValue(evaluated)
+	default:
+		return newError("not a function: %s", fn.Type().Name())
 	}
 
-	extendedEnv := extendFunctionEnv(function, args)
-	evaluated := Eval(function.Body, extendedEnv)
-	return unwrapReturnValue(evaluated)
 }
 
 func extendFunctionEnv(fn *object.Function, args []object.Object) *object.Environment {
@@ -220,14 +330,20 @@ func unwrapReturnValue(obj object.Object) object.Object {
 
 func evalIdentifier(node *ast.Identifier, env *object.Environment) object.Object {
 	val, ok := env.Get(node.Value)
-	if !ok {
-		return newError("unknown identifier: %s", node.Value)
+	if ok {
+		return val
 	}
 
-	return val
+	builtin, ok := object.Builtins[node.Value]
+	if ok {
+		return builtin
+	}
+
+	return newError("unknown identifier: %s", node.Value)
 }
 
 func evalBlockStatement(bs *ast.BlockStatement, env *object.Environment) object.Object {
+	env = object.NewEnclosedEnvironment(env)
 	var result object.Object
 
 	for _, statement := range bs.Statements {
@@ -236,11 +352,13 @@ func evalBlockStatement(bs *ast.BlockStatement, env *object.Environment) object.
 		if result != nil {
 			rt := result.Type()
 			if rt == parser.RETURN || rt == parser.ERROR {
+				env = object.UnwrapEnvironment(env)
 				return result
 			}
 		}
 	}
 
+	env = object.UnwrapEnvironment(env)
 	return result
 }
 
@@ -271,30 +389,43 @@ func evalInfixExpression(operator string, left, right object.Object) object.Obje
 	switch {
 	case left.Type() == parser.INT && right.Type() == parser.INT:
 		return evalIntegerInfixExpression(operator, left, right)
+	case left.Type() == parser.STRING && right.Type() == parser.STRING:
+		return evalStringInfixExpression(operator, left, right)
 	case operator == token.EQ:
 		return rawBooleanToBooleanObject(left == right)
 	case operator == token.NEQ:
 		return rawBooleanToBooleanObject(left != right)
 	case left.Type() == parser.BOOLEAN && right.Type() == parser.BOOLEAN:
 		return evalBooleanInfixExpression(operator, left, right)
-	case left.Type() == parser.STRING && right.Type() == parser.STRING:
-		return evalStringInfixExpression(operator, left, right)
 	case left.Type() != right.Type():
-		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
+		return newError("type mismatch: %s %s %s", left.Type().Name(), operator, right.Type().Name())
 	default:
-		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+		return newError("unknown operator: %s %s %s", left.Type().Name(), operator, right.Type().Name())
 	}
 }
 
 func evalStringInfixExpression(operator string, left, right object.Object) object.Object {
-	if operator != "+" {
-		return newError("unsupported operator: %s %s %s", left.Type(), operator, right.Type())
-	}
-
 	leftVal := left.(*object.String).Value
 	rightVal := right.(*object.String).Value
+	switch operator {
+	case "+":
+		return &object.String{Value: leftVal + rightVal}
+	case "==":
+		if leftVal == rightVal {
+			return TRUE
+		} else {
+			return FALSE
+		}
+	case "!=":
+		if leftVal != rightVal {
+			return TRUE
+		} else {
+			return FALSE
+		}
+	default:
+		return newError("unsupported operator: %s %s %s", left.Type().Name(), operator, right.Type().Name())
+	}
 
-	return &object.String{Value: leftVal + rightVal}
 }
 
 func evalBooleanInfixExpression(operator string, left, right object.Object) object.Object {
@@ -308,7 +439,7 @@ func evalBooleanInfixExpression(operator string, left, right object.Object) obje
 	case token.NEQ:
 		return rawBooleanToBooleanObject(left != right)
 	default:
-		return newError("unknown operator: %s %s %s", left.Type(), operator, right.Type())
+		return newError("unknown operator: %s %s %s", left.Type().Name(), operator, right.Type().Name())
 	}
 }
 
@@ -325,6 +456,8 @@ func evalIntegerInfixExpression(operator string, left, right object.Object) obje
 		return &object.Integer{Value: leftVal * rightVal}
 	case token.SLASH:
 		return &object.Integer{Value: leftVal / rightVal}
+	case token.PERCENT:
+		return &object.Integer{Value: leftVal % rightVal}
 	case token.EQ:
 		return rawBooleanToBooleanObject(leftVal == rightVal)
 	case token.NEQ:
@@ -345,8 +478,24 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 		return evalBangOperatorExpression(right)
 	case token.MINUS:
 		return evalMinusPrefixOperatorExpression(right)
+	case token.FOPER:
+		return evalFoperPrefixOperatorExpression(right)
 	default:
 		return newError("unknown operator: %s%s", operator, right.Type())
+	}
+}
+
+func evalFoperPrefixOperatorExpression(right object.Object) object.Object {
+	if right.Type() != parser.STRING {
+		return newError("unknown operator: -f %s", right.Type())
+	}
+
+	value := right.(*object.String).Value
+	_, err := os.Stat(value)
+	if os.IsNotExist(err) {
+		return FALSE
+	} else {
+		return TRUE
 	}
 }
 

@@ -6,15 +6,9 @@ import (
 	"os/user"
 
 	"kstmc.com/gosha/internal/repl"
-	"kstmc.com/gosha/internal/token"
 )
 
 func main() {
-	err := token.SetupBashCalls()
-	if err != nil {
-		return
-	}
-
 	if len(os.Args) > 1 {
 		file, err := os.Open(os.Args[1])
 		if err != nil {

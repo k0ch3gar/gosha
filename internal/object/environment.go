@@ -16,6 +16,10 @@ func NewEnclosedEnvironment(outer *Environment) *Environment {
 	return env
 }
 
+func UnwrapEnvironment(env *Environment) *Environment {
+	return env.outer
+}
+
 func (e *Environment) Get(name string) (Object, bool) {
 	obj, ok := e.store[name]
 	if !ok && e.outer != nil {
@@ -23,6 +27,16 @@ func (e *Environment) Get(name string) (Object, bool) {
 	}
 
 	return obj, ok
+}
+
+func (e *Environment) Update(name string, value Object) Object {
+	if _, ok := e.store[name]; ok {
+		return e.Set(name, value)
+	} else if e.outer != nil {
+		return e.outer.Update(name, value)
+	}
+
+	return value
 }
 
 func (e *Environment) Set(name string, value Object) Object {

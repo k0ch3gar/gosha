@@ -45,8 +45,8 @@ func (adt *AnyDataType) Name() string {
 }
 
 type FunctionDataType struct {
-	Parameters  []DataType
-	ReturnValue DataType
+	Parameters []DataType
+	ReturnType DataType
 }
 
 func (fdt *FunctionDataType) Name() string {
@@ -60,7 +60,7 @@ func (fdt *FunctionDataType) Name() string {
 
 	out.WriteString(strings.Join(paramsTemp, ", "))
 	out.WriteString(") ")
-	out.WriteString(fdt.ReturnValue.Name())
+	out.WriteString(fdt.ReturnType.Name())
 
 	return out.String()
 }
@@ -77,4 +77,13 @@ type ErrorDataType struct {
 
 func (edt *ErrorDataType) Name() string {
 	return "error"
+}
+
+type BuiltinDataType struct {
+	Parameters []DataType
+	ReturnType DataType
+}
+
+func (bdt *BuiltinDataType) Name() string {
+	return "builtin"
 }

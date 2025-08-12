@@ -19,10 +19,13 @@ func AnalyzeProgram(node *ast.Program, env *object.Environment) []string {
 }
 
 func analyzeBlockStatement(node *ast.BlockStatement, returnType ast.DataType, env *object.Environment) []string {
+	env = object.NewEnclosedEnvironment(env)
 	var errors []string
 	for _, stmt := range node.Statements {
 		errors = append(errors, AnalyzeStatement(stmt, returnType, env)...)
 	}
+
+	env = object.UnwrapEnvironment(env)
 
 	return errors
 }
@@ -39,11 +42,28 @@ func AnalyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.E
 		return analyzeIfStatement(stmt, returnType, env)
 	case *ast.VarStatement:
 		return analyzeVarStatement(stmt, env)
+	case *ast.ForStatement:
+		return analyzeForStatement(stmt, returnType, env)
 	case *ast.InitAssignStatement:
 		return analyzeInitAssignStatement(stmt, env)
 	default:
 		return []string{fmt.Sprintf("Analyzer error. Unsupported statement %T", stmt)}
 	}
+}
+
+func analyzeForStatement(stmt *ast.ForStatement, returnType ast.DataType, env *object.Environment) []string {
+	exprType, errors := AnalyzeExpression(stmt.Condition, env)
+	if len(errors) != 0 {
+		return errors
+	}
+
+	if exprType.Name() != parser.BOOLEAN.Name() {
+		msg := fmt.Sprintf("Analyzer error. Expected boolean type for condition, got=%s", exprType.Name())
+		return []string{msg}
+	}
+
+	errors = analyzeBlockStatement(stmt.Consequence, returnType, env)
+	return errors
 }
 
 func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) []string {
@@ -82,21 +102,23 @@ func analyzeInitAssignStatement(stmt *ast.InitAssignStatement, env *object.Envir
 
 func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []string {
 	var identType ast.DataType
-	if stmt.Name.DataType != nil {
-		identType = *stmt.Name.DataType
-	} else {
-		identType = parser.ANY
-	}
-
 	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
 		return errors
+	}
+
+	if stmt.Name.DataType != nil {
+		identType = *stmt.Name.DataType
+	} else {
+		identType = exprType
 	}
 
 	if identType != parser.ANY && identType.Name() != exprType.Name() {
 		msg := fmt.Sprintf("Analyzer error. type mismatch. expected %s, got %s", identType.Name(), exprType.Name())
 		errors = append(errors, msg)
 	}
+
+	env.Set(stmt.Name.Value, RawTypeToObj(identType))
 
 	return errors
 }
@@ -131,13 +153,18 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (ast.DataTy
 		return parser.STRING, errors
 	case *ast.Identifier:
 		obj, ok := env.Get(expr.Value)
-		if !ok {
-			msg := fmt.Sprintf("analyzer error. unknown identifier %s", expr.Value)
-			errors = append(errors, msg)
-			return nil, errors
+		if ok {
+			return obj.Type(), nil
 		}
 
-		return obj.Type(), nil
+		fnObj, ok := object.Builtins[expr.Value]
+		if ok {
+			return fnObj.Type(), nil
+		}
+
+		msg := fmt.Sprintf("analyzer error. unknown identifier %s", expr.Value)
+		errors = append(errors, msg)
+		return nil, errors
 	case *ast.CallExpression:
 		return analyzeCallExpression(expr, env)
 	case *ast.PrefixExpression:
@@ -167,7 +194,9 @@ func analyzeIfStatement(expr *ast.IfStatement, returnType ast.DataType, env *obj
 	}
 
 	errors = append(errors, analyzeBlockStatement(expr.Consequence, returnType, env)...)
-	errors = append(errors, analyzeBlockStatement(expr.Alternative, returnType, env)...)
+	if expr.Alternative != nil {
+		errors = append(errors, analyzeBlockStatement(expr.Alternative, returnType, env)...)
+	}
 	return errors
 }
 
@@ -177,36 +206,38 @@ func analyzeCallExpression(expr *ast.CallExpression, env *object.Environment) (a
 		return nil, errors
 	}
 
-	fnType, ok := dType.(*ast.FunctionDataType)
-	if !ok {
+	switch fnType := dType.(type) {
+	case *ast.BuiltinDataType:
+		return fnType.ReturnType, nil
+	case *ast.FunctionDataType:
+		for i, param := range expr.Arguments {
+			var arg ast.DataType
+			arg, tempErrors := AnalyzeExpression(param, env)
+			if len(tempErrors) != 0 {
+				return nil, append(errors, tempErrors...)
+			}
+
+			if fnType.Parameters[i].Name() != arg.Name() {
+				msg := fmt.Sprintf("analyzer error. Incorrect type passed into function. expected %s, got=%s", fnType.Name(), arg.Name())
+				errors = append(errors, msg)
+			}
+		}
+
+		if len(errors) != 0 {
+			return nil, errors
+		}
+
+		return fnType.ReturnType, nil
+	default:
 		msg := fmt.Sprintf("Analyzer error. Unsupported call type %T", dType)
 		return nil, []string{msg}
 	}
-
-	for i, param := range expr.Arguments {
-		var arg ast.DataType
-		arg, tempErrors := AnalyzeExpression(param, env)
-		if len(tempErrors) != 0 {
-			return nil, append(errors, tempErrors...)
-		}
-
-		if fnType.Parameters[i].Name() != arg.Name() {
-			msg := fmt.Sprintf("analyzer error. Incorrect type passed into function. expected %s, got=%s", fnType.Name(), arg.Name())
-			errors = append(errors, msg)
-		}
-	}
-
-	if len(errors) != 0 {
-		return nil, errors
-	}
-
-	return fnType.ReturnValue, nil
 }
 
 func analyzeFunctionLiteral(expr *ast.FunctionLiteral, env *object.Environment) (ast.DataType, []string) {
 	env = object.NewEnclosedEnvironment(env)
 	fn := &ast.FunctionDataType{
-		ReturnValue: expr.ReturnType,
+		ReturnType: expr.ReturnType,
 	}
 
 	for _, ident := range expr.Parameters {
@@ -261,9 +292,22 @@ func analyzeInfixExpression(expr *ast.InfixExpression, env *object.Environment) 
 		return analyzeLtInfixOperator(leftType, rightType)
 	case ">":
 		return analyzeGtInfixOperator(leftType, rightType)
+	case "%":
+		return analyzePercentInfixOperator(leftType, rightType)
 	default:
 		msg := fmt.Sprintf("analyzer error. unsupported infix operator type %s", expr.Operator)
 		errors = append(errors, msg)
+		return nil, errors
+	}
+}
+
+func analyzePercentInfixOperator(leftType ast.DataType, rightType ast.DataType) (ast.DataType, []string) {
+	switch {
+	case leftType.Name() == parser.INT.Name() && rightType.Name() == parser.INT.Name():
+		return parser.INT, nil
+	default:
+		msg := fmt.Sprintf("analyzer error. unsupported expression for 'percent' operator: %s and %s", leftType.Name(), rightType.Name())
+		errors := []string{msg}
 		return nil, errors
 	}
 }
@@ -272,7 +316,7 @@ func analyzeNeqInfixOperator(leftType, rightType ast.DataType) (ast.DataType, []
 	if leftType == rightType {
 		return parser.BOOLEAN, nil
 	} else {
-		msg := fmt.Sprintf("analyzer error. unsupported comparison for '!=' operator: %s and %s", leftType.Name(), rightType.Name())
+		msg := fmt.Sprintf("analyzer error. unsupported comparison for '==' operator: %s and %s", leftType.Name(), rightType.Name())
 		errors := []string{msg}
 		return nil, errors
 	}
@@ -367,9 +411,21 @@ func analyzePrefixExpression(expr *ast.PrefixExpression, env *object.Environment
 		return analyzeBangPrefixOperator(rightType)
 	case "-":
 		return analyzeMinusPrefixOperator(rightType)
+	case "-f":
+		return analyzeFoperPrefixExpression(rightType)
 	default:
 		msg := fmt.Sprintf("analyzer error. unsupportet prefix operator type %s", expr.Operator)
 		errors = append(errors, msg)
+		return nil, errors
+	}
+}
+
+func analyzeFoperPrefixExpression(rightType ast.DataType) (ast.DataType, []string) {
+	if rightType == parser.STRING {
+		return parser.BOOLEAN, nil
+	} else {
+		msg := fmt.Sprintf("analyzer error. unsupported expression type for '-f' operator %s", rightType.Name())
+		errors := []string{msg}
 		return nil, errors
 	}
 }

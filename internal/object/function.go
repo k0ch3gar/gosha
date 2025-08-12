@@ -25,7 +25,7 @@ func (f *Function) Type() ast.DataType {
 
 			return params
 		}(),
-		ReturnValue: f.ReturnType,
+		ReturnType: f.ReturnType,
 	}
 }
 
