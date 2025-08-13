@@ -11,7 +11,7 @@ Gosha - это интерпретатор языка Go, написанный н
 ## Установка и сборка
 
 ```bash
-git clone [https://github.com/your-username/gosha.git](https://github.com/k0ch3gar/gosha.git)
+git clone https://github.com/k0ch3gar/gosha.git
 cd gosha
 go build -tags netgo -ldflags '-extldflags "-static"' ./cmd/gosha
 mv ./gosha /usr/bin
