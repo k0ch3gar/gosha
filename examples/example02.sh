@@ -3,7 +3,7 @@
 var all = ""
 var cur = ""
 for cur != "q" {
-  readln(cur)
+  read(cur)
   if cur == "q" {
     return all
   }
