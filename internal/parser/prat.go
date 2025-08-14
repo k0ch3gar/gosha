@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strings"
+
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/token"
 )
@@ -19,7 +21,6 @@ func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParseFn) {
 }
 
 func (p *Parser) parsePrefixExpression() ast.Expression {
-	//defer untrace(trace("parsePrefixExpression"))
 	expression := &ast.PrefixExpression{
 		Token:    p.curToken,
 		Operator: p.curToken.Literal,
@@ -47,6 +48,25 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 	return expression
 }
 
+func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+	expression := &ast.CallExpression{
+		Token:    p.curToken,
+		Function: function,
+	}
+
+	expression.Arguments = p.parseCallArguments()
+	return expression
+}
+
+func (p *Parser) parseBashExpression() ast.Expression {
+	bashExpr := &ast.BashExpression{
+		Token: p.curToken,
+		Value: strings.Fields(p.curToken.Literal),
+	}
+
+	return bashExpr
+}
+
 func (p *Parser) parseExpression(precedence int) ast.Expression {
 	//defer untrace(trace("parseExpression"))
 	prefix := p.prefixParseFns[p.curToken.Type]
@@ -57,7 +77,7 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 
 	leftExpression := prefix()
 
-	for !(p.peekTokenIs(token.SEMICOLON) || p.peekTokenIs(token.NLINE)) && precedence < p.peekPrecedence() {
+	for !p.peekTokenIs(token.NLINE) && precedence < p.peekPrecedence() {
 		infix := p.infixParseFns[p.peekToken.Type]
 		if infix == nil {
 			return leftExpression

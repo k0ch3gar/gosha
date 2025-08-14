@@ -38,7 +38,6 @@ const (
 	MINUS      = "-"
 	PERCENT    = "%"
 	COMMA      = ","
-	SEMICOLON  = ";"
 
 	LPAREN = "("
 	RPAREN = ")"

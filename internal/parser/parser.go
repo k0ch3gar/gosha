@@ -2,8 +2,6 @@ package parser
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
 
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/lexer"
@@ -73,8 +71,8 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.FOPER, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
-	p.registerPrefix(token.FALSE, p.parseBoolean)
-	p.registerPrefix(token.TRUE, p.parseBoolean)
+	p.registerPrefix(token.FALSE, p.parseBooleanLiteral)
+	p.registerPrefix(token.TRUE, p.parseBooleanLiteral)
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
@@ -98,25 +96,6 @@ func New(l *lexer.Lexer) *Parser {
 	p.nextToken()
 
 	return p
-}
-
-func (p *Parser) parseStringLiteral() ast.Expression {
-	expression := &ast.StringLiteral{
-		Token: p.curToken,
-		Value: p.curToken.Literal,
-	}
-
-	return expression
-}
-
-func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
-	expression := &ast.CallExpression{
-		Token:    p.curToken,
-		Function: function,
-	}
-
-	expression.Arguments = p.parseCallArguments()
-	return expression
 }
 
 func (p *Parser) parseCallArguments() []ast.Expression {
@@ -143,37 +122,6 @@ func (p *Parser) parseCallArguments() []ast.Expression {
 	return args
 }
 
-func (p *Parser) parseFunctionLiteral() ast.Expression {
-	lit := &ast.FunctionLiteral{
-		Token: p.curToken,
-	}
-
-	if p.peekTokenIs(token.IDENT) {
-		p.nextToken()
-		lit.Name = &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
-	}
-
-	if !p.expectPeek(token.LPAREN) {
-		return nil
-	}
-
-	lit.Parameters = p.parseFunctionParameters()
-	lit.ReturnType = NIL
-
-	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
-		p.nextToken()
-		lit.ReturnType = p.parseDataType()
-	}
-
-	if !p.expectPeek(token.LBRACE) {
-		return nil
-	}
-
-	lit.Body = p.parseBlockStatement()
-
-	return lit
-}
-
 func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 	var idents []*ast.Identifier
 
@@ -184,7 +132,7 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 	p.nextToken()
 
-	var dataType *ast.DataType = new(ast.DataType)
+	var dataType = new(ast.DataType)
 
 	ident := &ast.Identifier{
 		Token:    p.curToken,
@@ -192,9 +140,9 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 		DataType: dataType,
 	}
 
-	if p.peekTokenIs(token.DTYPE) {
+	if !p.peekTokenIs(token.COMMA) {
 		p.nextToken()
-		*dataType = p.parseDataType()
+		*dataType = p.parseDataTypeLiteral()
 		dataType = new(ast.DataType)
 	}
 
@@ -213,7 +161,7 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 
 		if p.peekTokenIs(token.DTYPE) {
 			p.nextToken()
-			*dataType = p.parseDataType()
+			*dataType = p.parseDataTypeLiteral()
 			dataType = new(ast.DataType)
 		}
 
@@ -278,15 +226,6 @@ func (p *Parser) parseBlockStatement() *ast.BlockStatement {
 	return block
 }
 
-func (p *Parser) parseBoolean() ast.Expression {
-	expression := &ast.Boolean{
-		Token: p.curToken,
-		Value: p.curTokenIs(token.TRUE),
-	}
-
-	return expression
-}
-
 func (p *Parser) parseIdentifier() ast.Expression {
 	return &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 }
@@ -322,14 +261,15 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 		DataType: nil,
 	}
 
-	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
+	if !p.peekTokenIs(token.ASSIGN) {
 		p.nextToken()
 
-		dType := p.parseDataType()
+		dType := p.parseDataTypeLiteral()
 		stmt.Name.DataType = &dType
 	}
 
 	if p.peekTokenIs(token.ASSIGN) {
+		p.nextToken()
 		p.nextToken()
 		stmt.Value = p.parseExpression(LOWEST)
 	}
@@ -337,74 +277,6 @@ func (p *Parser) parseVarStatement() *ast.VarStatement {
 	p.nextToken()
 
 	return stmt
-}
-
-func rawTypeToDataType(raw string) ast.DataType {
-	switch raw {
-	case "string":
-		return STRING
-	case "int":
-		return INT
-	case "bool":
-		return BOOLEAN
-	case "any":
-		return ANY
-	default:
-		return NIL
-	}
-}
-
-func (p *Parser) parseDataType() ast.DataType {
-	if p.curTokenIs(token.DTYPE) {
-		return rawTypeToDataType(p.curToken.Literal)
-	}
-
-	if !p.curTokenIs(token.FUNCTION) {
-		return nil
-	}
-
-	dType := &ast.FunctionDataType{}
-	if !p.expectPeek(token.LPAREN) {
-		return nil
-	}
-
-	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
-		p.nextToken()
-		param := p.parseDataType()
-		if param == nil {
-			return nil
-		}
-
-		dType.Parameters = append(dType.Parameters, param)
-	}
-
-	for p.peekTokenIs(token.COMMA) {
-		p.nextToken()
-		p.nextToken()
-		param := p.parseDataType()
-		if param == nil {
-			return nil
-		}
-
-		dType.Parameters = append(dType.Parameters, param)
-		p.nextToken()
-	}
-
-	if !p.expectPeek(token.RPAREN) {
-		return nil
-	}
-
-	if p.peekTokenIs(token.DTYPE) || p.peekTokenIs(token.FUNCTION) {
-		p.nextToken()
-		returnType := p.parseDataType()
-		if returnType == nil {
-			dType.ReturnType = NIL
-		} else {
-			dType.ReturnType = returnType
-		}
-	}
-
-	return dType
 }
 
 func (p *Parser) parseStatement() ast.Statement {
@@ -417,8 +289,6 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseForStatement()
 	case token.IF:
 		return p.parseIfStatement()
-	case token.SEMICOLON:
-		return nil
 	case token.NLINE:
 		return nil
 	case token.RETURN:
@@ -464,24 +334,6 @@ func (p *Parser) parseCommentStatement() ast.Statement {
 	return nil
 }
 
-//func (p *Parser) parseCallStatement()
-
-func (p *Parser) peekPrecedence() int {
-	if p, ok := precedences[p.peekToken.Type]; ok {
-		return p
-	}
-
-	return LOWEST
-}
-
-func (p *Parser) curPrecedence() int {
-	if p, ok := precedences[p.curToken.Type]; ok {
-		return p
-	}
-
-	return LOWEST
-}
-
 func (p *Parser) parseInitAssignStatement() *ast.InitAssignStatement {
 	if !p.peekTokenIs(token.INITASSIGN) {
 		p.peekError(token.INITASSIGN)
@@ -501,22 +353,13 @@ func (p *Parser) parseInitAssignStatement() *ast.InitAssignStatement {
 	return stmt
 }
 
-func (p *Parser) parseBashExpression() ast.Expression {
-	bashExpr := &ast.BashExpression{
-		Token: p.curToken,
-		Value: strings.Fields(p.curToken.Literal),
-	}
-
-	return bashExpr
-}
-
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
 	//defer untrace(trace("parseExpressionStatement"))
 	stmt := &ast.ExpressionStatement{Token: p.curToken}
 
 	stmt.Expression = p.parseExpression(LOWEST)
 
-	if p.peekTokenIs(token.SEMICOLON) || p.peekTokenIs(token.NLINE) {
+	if p.peekTokenIs(token.NLINE) {
 		p.nextToken()
 	}
 
@@ -550,18 +393,47 @@ func (p *Parser) parseAssignStatement() *ast.AssignStatement {
 	return stmt
 }
 
-func (p *Parser) parseIntegerLiteral() ast.Expression {
-	//defer untrace(trace("parseIntegerLiteral"))
-	lit := &ast.IntegerLiteral{Token: p.curToken}
-
-	value, err := strconv.ParseInt(p.curToken.Literal, 0, 64)
-	if err != nil {
-		msg := fmt.Sprintf("could not parse %q as integer", p.curToken.Literal)
-		p.errors = append(p.errors, msg)
+func (p *Parser) parseFunctionDataType() ast.DataType {
+	dType := &ast.FunctionDataType{}
+	if !p.expectPeek(token.LPAREN) {
 		return nil
 	}
 
-	lit.Value = value
+	if !p.peekTokenIs(token.RPAREN) {
+		p.nextToken()
+		param := p.parseDataTypeLiteral()
+		if param == nil {
+			return nil
+		}
 
-	return lit
+		dType.Parameters = append(dType.Parameters, param)
+	}
+
+	for p.peekTokenIs(token.COMMA) {
+		p.nextToken()
+		p.nextToken()
+		param := p.parseDataTypeLiteral()
+		if param == nil {
+			return nil
+		}
+
+		dType.Parameters = append(dType.Parameters, param)
+		p.nextToken()
+	}
+
+	if !p.expectPeek(token.RPAREN) {
+		return nil
+	}
+
+	if !p.peekTokenIs(token.LBRACE) {
+		p.nextToken()
+		returnType := p.parseDataTypeLiteral()
+		if returnType == nil {
+			dType.ReturnType = NIL
+		} else {
+			dType.ReturnType = returnType
+		}
+	}
+
+	return dType
 }

@@ -71,7 +71,7 @@ func (l *Lexer) NextToken() token.Token {
 	case '%':
 		tok = newToken(token.PERCENT, l.ch)
 	case ';':
-		tok = newToken(token.SEMICOLON, l.ch)
+		tok = newToken(token.NLINE, l.ch)
 	case '(':
 		tok = newToken(token.LPAREN, l.ch)
 	case ')':
