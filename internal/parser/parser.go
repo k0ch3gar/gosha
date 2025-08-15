@@ -437,3 +437,18 @@ func (p *Parser) parseFunctionDataType() ast.DataType {
 
 	return dType
 }
+
+func (p *Parser) parseSliceDataType() ast.DataType {
+	if !p.expectPeek(token.RBRACKET) {
+		return nil
+	}
+
+	p.nextToken()
+	arrayDataType := &ast.SliceDataType{}
+	arrayDataType.Type = p.parseDataTypeLiteral()
+	if arrayDataType.Type == nil {
+		return nil
+	}
+
+	return arrayDataType
+}

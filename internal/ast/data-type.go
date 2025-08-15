@@ -87,3 +87,11 @@ type BuiltinDataType struct {
 func (bdt *BuiltinDataType) Name() string {
 	return "builtin"
 }
+
+type SliceDataType struct {
+	Type DataType
+}
+
+func (sdt *SliceDataType) Name() string {
+	return "[]" + sdt.Type.Name()
+}

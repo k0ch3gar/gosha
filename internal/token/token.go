@@ -39,6 +39,9 @@ const (
 	PERCENT    = "%"
 	COMMA      = ","
 
+	LBRACKET = "["
+	RBRACKET = "]"
+
 	LPAREN = "("
 	RPAREN = ")"
 

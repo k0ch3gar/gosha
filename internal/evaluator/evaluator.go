@@ -66,7 +66,7 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		if val == nil && node.Name.DataType != nil {
-			env.Set(node.Name.Value, analyzer.RawTypeToObj(*node.Name.DataType))
+			env.Set(node.Name.Value, analyzer.NativeTypeToDefaultObj(*node.Name.DataType))
 		} else if node.Name.DataType != nil && (*node.Name.DataType).Name() == parser.ANY.Name() {
 			env.Set(node.Name.Value, &object.Any{Value: val.Inspect()})
 		} else {
@@ -157,6 +157,37 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 
 func applyBuiltin(fn *object.Builtin, args []ast.Expression, env *object.Environment) object.Object {
 	switch fn.Inspect() {
+	case "append":
+		ident, ok := args[0].(*ast.Identifier)
+		if !ok {
+			return newError("expected identifier for append. got=%T", args[0])
+		}
+
+		obj, ok := env.Get(ident.Value)
+		if !ok {
+			return newError("unknown identifier %s", ident.Value)
+		}
+
+		sliceObj, ok := obj.(*object.SliceObject)
+		if !ok {
+			return newError("unknown identifier %s", ident.Value)
+		}
+
+		newSlice := &object.SliceObject{
+			ValueType: sliceObj.ValueType,
+			Values:    sliceObj.Values,
+		}
+
+		for _, arg := range args[1:] {
+			val := Eval(arg, env)
+			if val.Type().Name() != newSlice.ValueType.Name() {
+				return newError("expected type %s, got %s", newSlice.ValueType.Name(), val.Type().Name())
+			}
+
+			newSlice.Values = append(newSlice.Values, val)
+		}
+
+		return newSlice
 	case "print":
 		for _, arg := range args {
 			fmt.Print(Eval(arg, env).Inspect())
@@ -171,7 +202,7 @@ func applyBuiltin(fn *object.Builtin, args []ast.Expression, env *object.Environ
 
 		ident, ok := args[0].(*ast.Identifier)
 		if !ok {
-			return newError("expected identifier for readln. got=%T", args[0])
+			return newError("expected identifier for read. got=%T", args[0])
 		}
 
 		obj, ok := env.Get(ident.Value)

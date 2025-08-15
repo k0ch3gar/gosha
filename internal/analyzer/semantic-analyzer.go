@@ -79,6 +79,8 @@ func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) 
 	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
 		return errors
+	} else {
+		return errors
 	}
 
 	if !env.Contains(stmt.Name.Value) {
@@ -122,7 +124,7 @@ func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []stri
 		errors = append(errors, msg)
 	}
 
-	env.Set(stmt.Name.Value, RawTypeToObj(identType))
+	env.Set(stmt.Name.Value, NativeTypeToDefaultObj(identType))
 
 	return errors
 }
@@ -245,7 +247,7 @@ func analyzeFunctionLiteral(expr *ast.FunctionLiteral, env *object.Environment) 
 	}
 
 	for _, ident := range expr.Parameters {
-		env.Set(ident.Value, RawTypeToObj(*ident.DataType))
+		env.Set(ident.Value, NativeTypeToDefaultObj(*ident.DataType))
 		fn.Parameters = append(fn.Parameters, *ident.DataType)
 	}
 
@@ -253,14 +255,16 @@ func analyzeFunctionLiteral(expr *ast.FunctionLiteral, env *object.Environment) 
 	return fn, errors
 }
 
-func RawTypeToObj(rawType ast.DataType) object.Object {
-	switch rawType.(type) {
+func NativeTypeToDefaultObj(rawType ast.DataType) object.Object {
+	switch rawType := rawType.(type) {
 	case *ast.IntegerDataType:
 		return &object.Integer{}
 	case *ast.BooleanDataType:
 		return &object.Boolean{}
 	case *ast.StringDataType:
 		return &object.String{}
+	case *ast.SliceDataType:
+		return &object.SliceObject{ValueType: rawType.Type}
 	case *ast.AnyDataType:
 		return &object.Any{}
 	default:

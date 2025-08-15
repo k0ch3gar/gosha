@@ -14,6 +14,8 @@ func (p *Parser) parseDataTypeLiteral() ast.DataType {
 		return tokenTypeToDataType(p.curToken.Literal)
 	case token.FUNCTION:
 		return p.parseFunctionDataType()
+	case token.LBRACKET:
+		return p.parseSliceDataType()
 	default:
 		msg := fmt.Sprintf("unknown data type that starts with %s token type", p.curToken.Type)
 		p.errors = append(p.errors, msg)

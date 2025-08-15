@@ -8,7 +8,9 @@ import (
 //type BuiltinFunction func(env *Environment, args ...Object) Object
 
 type Builtin struct {
-	FnName string
+	FnName     string
+	Parameters []*ast.Identifier
+	ReturnType ast.DataType
 }
 
 func (bi *Builtin) Inspect() string {
@@ -16,14 +18,32 @@ func (bi *Builtin) Inspect() string {
 }
 
 func (bi *Builtin) Type() ast.DataType {
-	return parser.BUILTIN
+	dType := &ast.BuiltinDataType{
+		ReturnType: bi.ReturnType,
+	}
+
+	for _, ident := range bi.Parameters {
+		dType.Parameters = append(dType.Parameters, *ident.DataType)
+	}
+
+	return dType
 }
 
 var Builtins = map[string]*Builtin{
 	"print": {
-		FnName: "print",
+		FnName:     "print",
+		ReturnType: parser.NIL,
 	},
 	"read": {
-		FnName: "read",
+		FnName:     "read",
+		ReturnType: parser.NIL,
+	},
+	"append": {
+		FnName:     "append",
+		ReturnType: &ast.SliceDataType{},
+	},
+	"len": {
+		FnName:     "len",
+		ReturnType: parser.INT,
 	},
 }
