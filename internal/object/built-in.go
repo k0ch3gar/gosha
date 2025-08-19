@@ -94,6 +94,10 @@ var Builtins = map[string]*Builtin{
 			switch arg := (*arg).(type) {
 			case *Integer:
 				fmt.Scan(&arg.Value)
+			case *String:
+				fmt.Scan(&arg.Value)
+			case *Boolean:
+				fmt.Scan(&arg.Value)
 			}
 
 			return &Nil{}

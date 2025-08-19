@@ -6,15 +6,16 @@ func readIntAndReturn() int {
   return val
 }
 
-var slice []int
+var slice []string
 
-slice = append(slice, 1)
+slice = append(slice, "1")
 print(slice[0])
 read(&slice[0])
 print(slice[0])
 
-for len(slice) < 5 {
-  slice = append(slice, readIntAndReturn())
+for len(slice) < 2 {
+  val := readIntAndReturn()
+  slice = append(slice, $(cat ~/.bash_history | tail -n $val))
 }
 
 print(slice)
