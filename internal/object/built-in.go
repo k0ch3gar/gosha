@@ -33,6 +33,7 @@ var Builtins = map[string]*Builtin{
 				fmt.Print(arg.Inspect() + " ")
 			}
 
+			fmt.Println()
 			return &Nil{}
 		},
 	},

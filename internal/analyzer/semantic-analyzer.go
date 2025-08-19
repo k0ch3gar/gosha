@@ -320,12 +320,24 @@ func analyzeInfixExpression(expr *ast.InfixExpression, env *object.Environment) 
 	case "/":
 		return analyzeSlashInfixOperator(leftType, rightType)
 	case "==":
+		if leftType == parser.ANY || rightType == parser.ANY {
+			return parser.BOOLEAN, nil
+		}
 		return analyzeEqInfixOperator(leftType, rightType)
 	case "!=":
+		if leftType == parser.ANY || rightType == parser.ANY {
+			return parser.BOOLEAN, nil
+		}
 		return analyzeNeqInfixOperator(leftType, rightType)
 	case "<":
+		if leftType == parser.ANY || rightType == parser.ANY {
+			return parser.BOOLEAN, nil
+		}
 		return analyzeLtInfixOperator(leftType, rightType)
 	case ">":
+		if leftType == parser.ANY || rightType == parser.ANY {
+			return parser.BOOLEAN, nil
+		}
 		return analyzeGtInfixOperator(leftType, rightType)
 	case "%":
 		return analyzePercentInfixOperator(leftType, rightType)
@@ -372,7 +384,7 @@ func analyzeLtInfixOperator(leftType, rightType ast.DataType) (ast.DataType, []s
 	case leftType == parser.INT && rightType == parser.INT:
 		return parser.BOOLEAN, nil
 	default:
-		msg := fmt.Sprintf("analyzer error. unsupported expression type for '<' operator %s", rightType.Name())
+		msg := fmt.Sprintf("analyzer error. unsupported expression type for '<' operator: %s and %s", leftType.Name(), rightType.Name())
 		errors := []string{msg}
 		return nil, errors
 	}
