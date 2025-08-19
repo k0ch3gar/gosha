@@ -79,8 +79,6 @@ func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) 
 	exprType, errors := AnalyzeExpression(stmt.Value, env)
 	if len(errors) != 0 {
 		return errors
-	} else {
-		return errors
 	}
 
 	if !env.Contains(stmt.Name.Value) {
@@ -89,7 +87,7 @@ func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) 
 		return errors
 	}
 
-	if ident.Type() != parser.ANY && ident.Type().Name() != exprType.Name() {
+	if ident.Type() != parser.ANY && exprType != parser.ANY && ident.Type().Name() != exprType.Name() {
 		msg := fmt.Sprintf("Analyzer error. type mismatch. expected %s, got %s", ident.Type().Name(), exprType.Name())
 		errors = append(errors, msg)
 	}
@@ -173,6 +171,8 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (ast.DataTy
 		return nil, errors
 	case *ast.CallExpression:
 		return analyzeCallExpression(expr, env)
+	case *ast.IndexExpression:
+		return analyzeIndexExpression(expr, env)
 	case *ast.PrefixExpression:
 		return analyzePrefixExpression(expr, env)
 	case *ast.StringLiteral:
@@ -186,6 +186,30 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (ast.DataTy
 		errors = append(errors, msg)
 		return nil, errors
 	}
+}
+
+func analyzeIndexExpression(expr *ast.IndexExpression, env *object.Environment) (ast.DataType, []string) {
+	lType, errors := AnalyzeExpression(expr.Left, env)
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
+	sliceType, ok := lType.(*ast.SliceDataType)
+	if !ok {
+		return nil, []string{fmt.Sprintf("Analyzer error. expected slice type for index expression, got=%T", lType)}
+	}
+
+	indexType, errors := AnalyzeExpression(expr.Index, env)
+	if len(errors) > 0 {
+		return nil, errors
+	}
+
+	_, ok = indexType.(*ast.IntegerDataType)
+	if !ok {
+		return nil, []string{fmt.Sprintf("Analyzer error. expected integer type for index expression, got=%T", lType)}
+	}
+
+	return sliceType.Type, nil
 }
 
 func analyzeIfStatement(expr *ast.IfStatement, returnType ast.DataType, env *object.Environment) []string {
@@ -214,7 +238,7 @@ func analyzeCallExpression(expr *ast.CallExpression, env *object.Environment) (a
 
 	switch fnType := dType.(type) {
 	case *ast.BuiltinDataType:
-		return fnType.ReturnType, nil
+		return parser.ANY, nil
 	case *ast.FunctionDataType:
 		for i, param := range expr.Arguments {
 			var arg ast.DataType
@@ -267,6 +291,9 @@ func NativeTypeToDefaultObj(rawType ast.DataType) object.Object {
 		return &object.SliceObject{ValueType: rawType.Type}
 	case *ast.AnyDataType:
 		return &object.Any{}
+	case *ast.ReferenceDataType:
+		val := NativeTypeToDefaultObj(rawType.ValueType)
+		return &object.ReferenceObject{Value: &val}
 	default:
 		return &object.Nil{}
 	}
@@ -421,9 +448,30 @@ func analyzePrefixExpression(expr *ast.PrefixExpression, env *object.Environment
 		return analyzeMinusPrefixOperator(rightType)
 	case "-f":
 		return analyzeFoperPrefixExpression(rightType)
+	case "*":
+		return analyzeAsteriksPrefixExpression(rightType)
+	case "&":
+		return analyzeRefPrefixExpression(rightType)
 	default:
 		msg := fmt.Sprintf("analyzer error. unsupportet prefix operator type %s", expr.Operator)
 		errors = append(errors, msg)
+		return nil, errors
+	}
+}
+
+func analyzeRefPrefixExpression(rightType ast.DataType) (ast.DataType, []string) {
+	return &ast.ReferenceDataType{
+		ValueType: rightType,
+	}, nil
+}
+
+func analyzeAsteriksPrefixExpression(rightType ast.DataType) (ast.DataType, []string) {
+	switch rightType := rightType.(type) {
+	case *ast.ReferenceDataType:
+		return rightType.ValueType, nil
+	default:
+		msg := fmt.Sprintf("analyzer error. unsupported expression type for '*' operator %s", rightType.Name())
+		errors := []string{msg}
 		return nil, errors
 	}
 }

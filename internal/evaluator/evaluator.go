@@ -91,10 +91,10 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 			return function
 		}
 
-		switch fn := function.(type) {
-		case *object.Builtin:
-			return applyBuiltin(fn, node.Arguments, env)
-		}
+		//switch fn := function.(type) {
+		//case *object.Builtin:
+		//	return applyBuiltin(fn, node.Arguments, env)
+		//}
 
 		args := evalExpressions(node.Arguments, env)
 		if len(args) == 1 && isError(args[0]) {
@@ -138,6 +138,32 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		return evalPrefixExpression(node.Operator, right)
+	case *ast.IndexExpression:
+		index := Eval(node.Index, env)
+		if isError(index) {
+			return index
+		}
+
+		intIndex, ok := index.(*object.Integer)
+		if !ok {
+			return newError("expected integer type for index expression, got=%T", index)
+		}
+
+		obj := Eval(node.Left, env)
+		if isError(index) {
+			return obj
+		}
+
+		slice, ok := obj.(*object.SliceObject)
+		if !ok {
+			return newError("expected slice obect for index expression, got=%T", obj)
+		}
+
+		if intIndex.Value < 0 || int64(len(slice.Values)) <= intIndex.Value {
+			return newError("out of bound error for slice '%s' at index %d", node.Left.String(), intIndex.Value)
+		}
+
+		return slice.Values[intIndex.Value]
 	case *ast.InfixExpression:
 		left := Eval(node.Left, env)
 		if isError(left) {
@@ -155,87 +181,87 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 	return NIL
 }
 
-func applyBuiltin(fn *object.Builtin, args []ast.Expression, env *object.Environment) object.Object {
-	switch fn.Inspect() {
-	case "append":
-		ident, ok := args[0].(*ast.Identifier)
-		if !ok {
-			return newError("expected identifier for append. got=%T", args[0])
-		}
-
-		obj, ok := env.Get(ident.Value)
-		if !ok {
-			return newError("unknown identifier %s", ident.Value)
-		}
-
-		sliceObj, ok := obj.(*object.SliceObject)
-		if !ok {
-			return newError("unknown identifier %s", ident.Value)
-		}
-
-		newSlice := &object.SliceObject{
-			ValueType: sliceObj.ValueType,
-			Values:    sliceObj.Values,
-		}
-
-		for _, arg := range args[1:] {
-			val := Eval(arg, env)
-			if val.Type().Name() != newSlice.ValueType.Name() {
-				return newError("expected type %s, got %s", newSlice.ValueType.Name(), val.Type().Name())
-			}
-
-			newSlice.Values = append(newSlice.Values, val)
-		}
-
-		return newSlice
-	case "print":
-		for _, arg := range args {
-			fmt.Print(Eval(arg, env).Inspect())
-		}
-
-		fmt.Println()
-		return &object.Nil{}
-	case "read":
-		if len(args) != 1 {
-			return &object.Error{Message: "to much arguments for read function"}
-		}
-
-		ident, ok := args[0].(*ast.Identifier)
-		if !ok {
-			return newError("expected identifier for read. got=%T", args[0])
-		}
-
-		obj, ok := env.Get(ident.Value)
-		if !ok {
-			return newError("unknown identifier %s", ident.Value)
-		}
-
-		switch obj := obj.(type) {
-		case *object.String:
-			_, err := fmt.Scan(&obj.Value)
-			if err != nil {
-				return newError(err.Error())
-			}
-		case *object.Integer:
-			_, err := fmt.Scan(&obj.Value)
-			if err != nil {
-				return newError(err.Error())
-			}
-		case *object.Boolean:
-			_, err := fmt.Scan(&obj.Value)
-			if err != nil {
-				return newError(err.Error())
-			}
-		default:
-			return newError("unsupported type %T", obj)
-		}
-
-		env.Update(ident.Value, obj)
-		return &object.Nil{}
-	}
-
-	return newError("unknown built-in function: %s", fn.Inspect())
-}
+//func applyBuiltin(fn *object.Builtin, args []ast.Expression, env *object.Environment) object.Object {
+//	switch fn.Inspect() {
+//	case "append":
+//		ident, ok := args[0].(*ast.Identifier)
+//		if !ok {
+//			return newError("expected identifier for append. got=%T", args[0])
+//		}
+//
+//		obj, ok := env.Get(ident.Value)
+//		if !ok {
+//			return newError("unknown identifier %s", ident.Value)
+//		}
+//
+//		sliceObj, ok := obj.(*object.SliceObject)
+//		if !ok {
+//			return newError("unknown identifier %s", ident.Value)
+//		}
+//
+//		newSlice := &object.SliceObject{
+//			ValueType: sliceObj.ValueType,
+//			Values:    sliceObj.Values,
+//		}
+//
+//		for _, arg := range args[1:] {
+//			val := Eval(arg, env)
+//			if val.Type().Name() != newSlice.ValueType.Name() {
+//				return newError("expected type %s, got %s", newSlice.ValueType.Name(), val.Type().Name())
+//			}
+//
+//			newSlice.Values = append(newSlice.Values, val)
+//		}
+//
+//		return newSlice
+//	case "print":
+//		for _, arg := range args {
+//			fmt.Print(Eval(arg, env).Inspect())
+//		}
+//
+//		fmt.Println()
+//		return &object.Nil{}
+//	case "read":
+//		if len(args) != 1 {
+//			return &object.Error{Message: "to much arguments for read function"}
+//		}
+//
+//		ident, ok := args[0].(*ast.Identifier)
+//		if !ok {
+//			return newError("expected identifier for read. got=%T", args[0])
+//		}
+//
+//		obj, ok := env.Get(ident.Value)
+//		if !ok {
+//			return newError("unknown identifier %s", ident.Value)
+//		}
+//
+//		switch obj := obj.(type) {
+//		case *object.String:
+//			_, err := fmt.Scan(&obj.Value)
+//			if err != nil {
+//				return newError(err.Error())
+//			}
+//		case *object.Integer:
+//			_, err := fmt.Scan(&obj.Value)
+//			if err != nil {
+//				return newError(err.Error())
+//			}
+//		case *object.Boolean:
+//			_, err := fmt.Scan(&obj.Value)
+//			if err != nil {
+//				return newError(err.Error())
+//			}
+//		default:
+//			return newError("unsupported type %T", obj)
+//		}
+//
+//		env.Update(ident.Value, obj)
+//		return &object.Nil{}
+//	}
+//
+//	return newError("unknown built-in function: %s", fn.Inspect())
+//}
 
 func evalForStatement(stmt *ast.ForStatement, env *object.Environment) object.Object {
 	for {
@@ -336,6 +362,8 @@ func evalExpressions(exps []ast.Expression, env *object.Environment) []object.Ob
 
 func applyFunction(fn object.Object, args []object.Object, env *object.Environment) object.Object {
 	switch fn := fn.(type) {
+	case *object.Builtin:
+		return fn.Fn(args...)
 	case *object.Function:
 		extendedEnv := extendFunctionEnv(fn, args)
 		evaluated := Eval(fn.Body, extendedEnv)
@@ -516,8 +544,27 @@ func evalPrefixExpression(operator string, right object.Object) object.Object {
 		return evalMinusPrefixOperatorExpression(right)
 	case token.FOPER:
 		return evalFoperPrefixOperatorExpression(right)
+	case token.ASTERISK:
+		return evalAsteriskPrefixOperatorExpression(right)
+	case token.REF:
+		return evalRefPrefixOperatorExpression(right)
 	default:
 		return newError("unknown operator: %s%s", operator, right.Type())
+	}
+}
+
+func evalRefPrefixOperatorExpression(right object.Object) object.Object {
+	return &object.ReferenceObject{
+		Value: &right,
+	}
+}
+
+func evalAsteriskPrefixOperatorExpression(right object.Object) object.Object {
+	switch right := right.(type) {
+	case *object.ReferenceObject:
+		return *right.Value
+	default:
+		return newError("expected reference: %s", right.Inspect())
 	}
 }
 

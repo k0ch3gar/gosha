@@ -100,7 +100,7 @@ func (l *Lexer) NextToken() token.Token {
 			l.readCh()
 			tok = token.Token{Type: token.AND, Literal: ch + string(l.ch)}
 		} else {
-			tok = newToken(token.ILLEGAL, l.ch)
+			tok = newToken(token.REF, l.ch)
 		}
 	case '|':
 		if l.peekChar() == '|' {

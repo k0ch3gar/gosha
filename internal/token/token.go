@@ -29,6 +29,8 @@ const (
 	AND = "&&"
 	OR  = "||"
 
+	REF = "&"
+
 	STRING = `"`
 
 	ASSIGN     = "="

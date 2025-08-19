@@ -102,3 +102,20 @@ func (p *Parser) parseGroupedExpression() ast.Expression {
 
 	return exp
 }
+
+func (p *Parser) parseSliceExpression(left ast.Expression) ast.Expression {
+	expr := &ast.IndexExpression{
+		Token: p.curToken,
+		Left:  left,
+	}
+
+	p.nextToken()
+
+	expr.Index = p.parseExpression(LOWEST)
+
+	if !p.expectPeek(token.RBRACKET) {
+		return nil
+	}
+
+	return expr
+}

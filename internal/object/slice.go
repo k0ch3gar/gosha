@@ -13,7 +13,7 @@ type SliceObject struct {
 }
 
 func (so *SliceObject) Type() ast.DataType {
-	return so.ValueType
+	return &ast.SliceDataType{Type: so.ValueType}
 }
 
 func (so *SliceObject) Inspect() string {

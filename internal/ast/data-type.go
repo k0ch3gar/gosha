@@ -95,3 +95,19 @@ type SliceDataType struct {
 func (sdt *SliceDataType) Name() string {
 	return "[]" + sdt.Type.Name()
 }
+
+type ReferenceDataType struct {
+	ValueType DataType
+}
+
+func (pdt *ReferenceDataType) Name() string {
+	return "*" + pdt.ValueType.Name()
+}
+
+type PointerDataType struct {
+	ValueType DataType
+}
+
+func (pdt *PointerDataType) Name() string {
+	return "*" + pdt.ValueType.Name()
+}
