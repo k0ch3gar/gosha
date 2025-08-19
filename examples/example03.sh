@@ -7,7 +7,7 @@ print("4 - exit")
 
 var a = 0
 for true {
-  read(a)
+  read(&a)
   if a == 1 {
     $(nano)
   }
