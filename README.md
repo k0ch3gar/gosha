@@ -1,14 +1,14 @@
-# Gosha: Интерпретатор Go с поддержкой Bash
+# Gosha: A Go Interpreter with Bash Support
 
-## Что это?
+## Overview
 
-Gosha - это интерпретатор языка Go, написанный на самом Go, с дополнительной поддержкой выполнения Bash-команд. Он позволяет:
+Gosha is a Go language interpreter implemented in Go, featuring seamless Bash command integration. It provides:
 
-- Выполнять Go-код в интерактивном режиме (REPL)
-- Запускать Go-скрипты используя шебанг
-- Смешивать Go-код с Bash-командами
+- Interactive Go code execution (REPL environment)
+- Go script execution via shebang
+- Hybrid Go/Bash command execution
 
-## Установка и сборка
+## Installation & Build
 
 ```bash
 git clone https://github.com/k0ch3gar/gosha.git
@@ -17,9 +17,9 @@ go build -tags netgo -ldflags '-extldflags "-static"' ./cmd/gosha
 mv ./gosha /usr/bin
 ```
 
-## Использование
+## Usage
 
-1) Использование в интерактивном режиме:
+1) Interactive execution:
 ```bash
 $ gosha
 Hi user!
@@ -27,7 +27,7 @@ That's Gosha!
 gosha>>
 ```
 
-2) Использование в скриптах с использованием шебанга:
+2) Script execution with Shebang:
 ```bash
 (your-script.sh)
 #!/usr/bin/gosha
@@ -36,6 +36,6 @@ print("Hello world!")
 ...
 ```
 
-### Мотивация
+### Motivation
 
-В первую очередь, этот проект был создан с целью избавиться от проблемы устаревшего и неудобного синтаксиса Bash-скриптов
+This project was born from the frustration with Bash's complex syntax.
