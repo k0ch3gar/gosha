@@ -2,6 +2,7 @@ package ast
 
 import (
 	"bytes"
+
 	"kstmc.com/gosha/internal/token"
 )
 
@@ -26,7 +27,9 @@ func (vs *VarStatement) String() string {
 	out.WriteString(" ")
 	out.WriteString(vs.Name.String())
 	out.WriteString(" = ")
-	out.WriteString(vs.Value.String())
+	if vs.Value != nil {
+		out.WriteString(vs.Value.String())
+	}
 
 	return out.String()
 }

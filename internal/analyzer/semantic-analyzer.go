@@ -102,6 +102,7 @@ func analyzeInitAssignStatement(stmt *ast.InitAssignStatement, env *object.Envir
 
 func analyzeVarStatement(stmt *ast.VarStatement, env *object.Environment) []string {
 	if stmt.Value == nil {
+		env.Set(stmt.Name.Value, NativeTypeToDefaultObj(*stmt.Name.DataType))
 		return nil
 	}
 
