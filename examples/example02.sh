@@ -1,4 +1,4 @@
-#!/bin/gosha
+#!/usr/bin/gosha
 
 var all = ""
 var cur = ""

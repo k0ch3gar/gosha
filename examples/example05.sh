@@ -1,4 +1,4 @@
-#!/bin/gosha
+#!/usr/bin/gosha
 
 var fileName = "info.log"
 

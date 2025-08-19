@@ -1,4 +1,4 @@
-#!/bin/gosha
+#!/usr/bin/gosha
 
 print("1 - nano")
 print("2 - vi")

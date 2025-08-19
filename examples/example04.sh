@@ -1,4 +1,4 @@
-#!/bin/gosha
+#!/usr/bin/gosha
 
 if $(pwd) == $(echo $HOME) {
   print($(echo $HOME))
