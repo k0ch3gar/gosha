@@ -69,9 +69,11 @@ const (
 	CALL     = "CALL"
 	BUILDIN  = "BUILDIN"
 	FOR      = "FOR"
+	GO       = "GO"
 )
 
 var keywords = map[string]TokenType{
+	"go":     GO,
 	"func":   FUNCTION,
 	"var":    VAR,
 	"true":   TRUE,

@@ -53,6 +53,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		}
 
 		env.Update(node.Name.Value, val)
+	case *ast.GoStatement:
+		return evalGoStatement(node.Expr, env)
 	case *ast.VarStatement:
 		var val object.Object
 		if node.Value != nil {
@@ -181,6 +183,11 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return evalInfixExpression(node.Operator, left, right)
 	}
 
+	return NIL
+}
+
+func evalGoStatement(expr ast.Expression, env *object.Environment) object.Object {
+	go Eval(expr, env)
 	return NIL
 }
 

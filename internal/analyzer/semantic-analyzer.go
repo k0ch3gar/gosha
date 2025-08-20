@@ -40,6 +40,9 @@ func AnalyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.E
 		return analyzeAssignStatement(stmt, env)
 	case *ast.IfStatement:
 		return analyzeIfStatement(stmt, returnType, env)
+	case *ast.GoStatement:
+		_, errors := AnalyzeExpression(stmt.Expr, env)
+		return errors
 	case *ast.VarStatement:
 		return analyzeVarStatement(stmt, env)
 	case *ast.ForStatement:
@@ -96,7 +99,8 @@ func analyzeAssignStatement(stmt *ast.AssignStatement, env *object.Environment) 
 }
 
 func analyzeInitAssignStatement(stmt *ast.InitAssignStatement, env *object.Environment) []string {
-	_, errors := AnalyzeExpression(stmt.Value, env)
+	dType, errors := AnalyzeExpression(stmt.Value, env)
+	env.Set(stmt.Name.Value, NativeTypeToDefaultObj(dType))
 	return errors
 }
 

@@ -293,6 +293,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseVarStatement()
 	case token.FOR:
 		return p.parseForStatement()
+	case token.GO:
+		return p.parseGoStatement()
 	case token.IF:
 		return p.parseIfStatement()
 	case token.NLINE:
@@ -466,4 +468,15 @@ func (p *Parser) parseBashVarExpression() ast.Expression {
 	}
 
 	return expr
+}
+
+func (p *Parser) parseGoStatement() ast.Statement {
+	stmt := &ast.GoStatement{
+		Token: p.curToken,
+	}
+
+	p.nextToken()
+	stmt.Expr = p.parseExpression(LOWEST)
+
+	return stmt
 }
