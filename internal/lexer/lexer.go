@@ -89,7 +89,6 @@ func (l *Lexer) NextToken() token.Token {
 			l.readCh()
 			tok.Literal = l.readBash()
 			tok.Type = token.BASHEXPR
-			return tok
 		} else if isLetter(l.peekChar()) {
 			l.readCh()
 			tok.Literal = "$" + l.readIdentifier()
