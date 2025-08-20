@@ -180,6 +180,8 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (ast.DataTy
 		return parser.STRING, errors
 	case *ast.InfixExpression:
 		return analyzeInfixExpression(expr, env)
+	case *ast.BashVarExpression:
+		return parser.STRING, errors
 	case *ast.FunctionLiteral:
 		return analyzeFunctionLiteral(expr, env)
 	default:

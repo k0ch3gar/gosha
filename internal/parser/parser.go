@@ -78,7 +78,8 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.LPAREN, p.parseGroupedExpression)
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.STRING, p.parseStringLiteral)
-	p.registerPrefix(token.BASH, p.parseBashExpression)
+	p.registerPrefix(token.BASHEXPR, p.parseBashExpression)
+	p.registerPrefix(token.BASHVAR, p.parseBashVarExpression)
 	p.registerPrefix(token.ASTERISK, p.parsePrefixExpression)
 	p.registerPrefix(token.REF, p.parsePrefixExpression)
 
@@ -456,4 +457,13 @@ func (p *Parser) parseSliceDataType() ast.DataType {
 	}
 
 	return arrayDataType
+}
+
+func (p *Parser) parseBashVarExpression() ast.Expression {
+	expr := &ast.BashVarExpression{
+		Token: p.curToken,
+		Value: p.curToken.Literal,
+	}
+
+	return expr
 }

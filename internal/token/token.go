@@ -53,7 +53,8 @@ const (
 
 	NLINE = "\n"
 
-	BASH = "$"
+	BASHEXPR = "$()"
+	BASHVAR  = "$"
 
 	// Keywords
 
@@ -92,7 +93,7 @@ func SetupBashCalls() error {
 	}
 
 	for _, file := range files {
-		keywords[file.Name()] = BASH
+		keywords[file.Name()] = BASHEXPR
 	}
 
 	return nil

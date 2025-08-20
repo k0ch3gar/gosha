@@ -88,7 +88,18 @@ func (l *Lexer) NextToken() token.Token {
 		if l.peekChar() == '(' {
 			l.readCh()
 			tok.Literal = l.readBash()
-			tok.Type = token.BASH
+			tok.Type = token.BASHEXPR
+			return tok
+		} else if isLetter(l.peekChar()) {
+			l.readCh()
+			tok.Literal = "$" + l.readIdentifier()
+			tok.Type = token.BASHVAR
+			return tok
+		} else if isDigit(l.peekChar()) {
+			l.readCh()
+			tok.Literal = "$" + l.readNumber()
+			tok.Type = token.BASHVAR
+			return tok
 		} else {
 			tok = newToken(token.ILLEGAL, l.ch)
 		}
