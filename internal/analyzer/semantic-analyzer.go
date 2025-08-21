@@ -342,9 +342,8 @@ func NativeTypeToDefaultObj(rawType ast.DataType) object.Object {
 		val := NativeTypeToDefaultObj(rawType.ValueType)
 		return &object.ReferenceObject{Value: &val}
 	case *ast.ChanDataType:
-		val := make(chan object.Object)
 		return &object.ChanObject{
-			Chan:     val,
+			Chan:     nil,
 			ChanType: rawType.ValueType,
 		}
 	default:

@@ -116,11 +116,27 @@ var Builtins = map[string]*Builtin{
 				return makeIntegerObject(args[1:])
 			case *ast.StringDataType:
 				return makeStringObject(args[1:])
+			case *ast.ChanDataType:
+				return makeChanObject(args)
 			default:
 				return &Error{Message: fmt.Sprintf("cannot make %s", arg)}
 			}
 		},
 	},
+}
+
+func makeChanObject(objects []Object) Object {
+	if len(objects) != 2 {
+		return &Error{Message: fmt.Sprintf("unexpected amount of arguments. expected 2, provided %d", len(objects)+1)}
+	}
+
+	val, ok := objects[1].(*Integer)
+	if !ok {
+		return &Error{Message: fmt.Sprintf("expected Integer argument to make chan, got=%T", objects[0])}
+	}
+
+	ch := make(chan Object, val.Value)
+	return &ChanObject{Chan: ch, ChanType: objects[0].(*DataTypeObject).DataType.(*ast.ChanDataType).ValueType}
 }
 
 func makeStringObject(objects []Object) Object {
