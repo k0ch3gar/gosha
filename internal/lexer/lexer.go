@@ -54,7 +54,14 @@ func (l *Lexer) NextToken() token.Token {
 	case '*':
 		tok = newToken(token.ASTERISK, l.ch)
 	case '<':
-		tok = newToken(token.LT, l.ch)
+		if l.peekChar() == '-' {
+			ch := string(l.ch)
+			l.readCh()
+			tok.Type = token.CHANOPERATOR
+			tok.Literal = ch + string(l.ch)
+		} else {
+			tok = newToken(token.LT, l.ch)
+		}
 	case '"':
 		tok.Literal = l.readString()
 		tok.Type = token.STRING

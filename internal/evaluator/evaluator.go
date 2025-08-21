@@ -31,6 +31,16 @@ var (
 
 func Eval(node ast.Node, env *object.Environment) object.Object {
 	switch node := node.(type) {
+	case *ast.ReadChanExpression:
+		obj, _ := env.Get(node.Source.Value)
+		chn := obj.(*object.ChanObject)
+		val := <-chn.Chan
+		return val
+	case *ast.SendChanStatement:
+		obj, _ := env.Get(node.Destination.Value)
+		chn := obj.(*object.ChanObject)
+		val := Eval(node.Source, env)
+		chn.Chan <- val
 	case *ast.IntegerLiteral:
 		return &object.Integer{Value: node.Value}
 	case *ast.ReturnStatement:

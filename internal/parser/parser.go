@@ -82,6 +82,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.BASHVAR, p.parseBashVarExpression)
 	p.registerPrefix(token.ASTERISK, p.parsePrefixExpression)
 	p.registerPrefix(token.REF, p.parsePrefixExpression)
+	p.registerPrefix(token.CHANOPERATOR, p.parseChanOperator)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.OR, p.parseInfixExpression)
@@ -306,6 +307,8 @@ func (p *Parser) parseStatement() ast.Statement {
 			return p.parseInitAssignStatement()
 		} else if p.peekTokenIs(token.ASSIGN) {
 			return p.parseAssignStatement()
+		} else if p.peekTokenIs(token.CHANOPERATOR) {
+			return p.parseSendChanOperator()
 		} else {
 			return p.parseExpressionStatement()
 		}
@@ -477,6 +480,33 @@ func (p *Parser) parseGoStatement() ast.Statement {
 
 	p.nextToken()
 	stmt.Expr = p.parseExpression(LOWEST)
+
+	return stmt
+}
+
+func (p *Parser) parseChanOperator() ast.Expression {
+	expr := &ast.ReadChanExpression{
+		Token: p.curToken,
+	}
+
+	if !p.expectPeek(token.IDENT) {
+		return nil
+	}
+
+	expr.Source = p.parseIdentifier().(*ast.Identifier)
+
+	return expr
+}
+
+func (p *Parser) parseSendChanOperator() ast.Statement {
+	stmt := &ast.SendChanStatement{
+		Token:       p.peekToken,
+		Destination: p.parseIdentifier().(*ast.Identifier),
+	}
+
+	p.nextToken()
+	p.nextToken()
+	stmt.Source = p.parseExpression(LOWEST)
 
 	return stmt
 }

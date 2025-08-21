@@ -34,6 +34,8 @@ func AnalyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.E
 	switch stmt := stmt.(type) {
 	case *ast.ExpressionStatement:
 		return analyzeExpressionStatement(stmt, env)
+	case *ast.SendChanStatement:
+		return analyzeSendChanStatement(stmt, env)
 	case *ast.ReturnStatement:
 		return analyzeReturnStatement(stmt, returnType, env)
 	case *ast.AssignStatement:
@@ -51,6 +53,29 @@ func AnalyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.E
 		return analyzeInitAssignStatement(stmt, env)
 	default:
 		return []string{fmt.Sprintf("Analyzer error. Unsupported statement %T", stmt)}
+	}
+}
+
+func analyzeSendChanStatement(stmt *ast.SendChanStatement, env *object.Environment) []string {
+	obj, ok := env.Get(stmt.Destination.Value)
+	if !ok {
+		return []string{fmt.Sprintf("Analyzer error. Unknown identifier %s", stmt.Destination.Value)}
+	}
+
+	chn, ok := obj.(*object.ChanObject)
+	if !ok {
+		return []string{fmt.Sprintf("Analyzer error. Expected identifier to be *object.ChanObject type, got=%T", obj)}
+	}
+
+	exprType, errors := AnalyzeExpression(stmt.Source, env)
+	if len(errors) > 0 {
+		return errors
+	}
+
+	if chn.ChanType.Name() == exprType.Name() {
+		return nil
+	} else {
+		return []string{fmt.Sprintf("Analyzer error. Expression type and chan type mismatch. Chan type %T, expression type %T", chn.ChanType, exprType)}
 	}
 }
 
@@ -178,6 +203,21 @@ func AnalyzeExpression(expr ast.Expression, env *object.Environment) (ast.DataTy
 		return analyzeCallExpression(expr, env)
 	case *ast.IndexExpression:
 		return analyzeIndexExpression(expr, env)
+	case *ast.ReadChanExpression:
+		obj, ok := env.Get(expr.Source.Value)
+		if !ok {
+			msg := fmt.Sprintf("analyzer error. unknown identifier %s", expr.Source.Value)
+			errors = append(errors, msg)
+			return nil, errors
+		}
+
+		if chn, ok := obj.(*object.ChanObject); !ok {
+			msg := fmt.Sprintf("analyzer error. expected identifier to be type *object.ChanObject, got %s", obj)
+			errors = append(errors, msg)
+			return nil, errors
+		} else {
+			return chn.ChanType, nil
+		}
 	case *ast.PrefixExpression:
 		return analyzePrefixExpression(expr, env)
 	case *ast.StringLiteral:
@@ -301,6 +341,12 @@ func NativeTypeToDefaultObj(rawType ast.DataType) object.Object {
 	case *ast.ReferenceDataType:
 		val := NativeTypeToDefaultObj(rawType.ValueType)
 		return &object.ReferenceObject{Value: &val}
+	case *ast.ChanDataType:
+		val := make(chan object.Object)
+		return &object.ChanObject{
+			Chan:     val,
+			ChanType: rawType.ValueType,
+		}
 	default:
 		return &object.Nil{}
 	}

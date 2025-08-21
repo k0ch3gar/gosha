@@ -33,13 +33,14 @@ const (
 
 	STRING = `"`
 
-	ASSIGN     = "="
-	INITASSIGN = ":="
-	FOPER      = "-f"
-	PLUS       = "+"
-	MINUS      = "-"
-	PERCENT    = "%"
-	COMMA      = ","
+	ASSIGN       = "="
+	INITASSIGN   = ":="
+	FOPER        = "-f"
+	PLUS         = "+"
+	MINUS        = "-"
+	PERCENT      = "%"
+	COMMA        = ","
+	CHANOPERATOR = "<-"
 
 	LBRACKET = "["
 	RBRACKET = "]"
@@ -70,6 +71,7 @@ const (
 	BUILDIN  = "BUILDIN"
 	FOR      = "FOR"
 	GO       = "GO"
+	CHAN     = "CHAN"
 )
 
 var keywords = map[string]TokenType{
@@ -86,6 +88,7 @@ var keywords = map[string]TokenType{
 	"bool":   DTYPE,
 	"any":    DTYPE,
 	"for":    FOR,
+	"chan":   CHAN,
 }
 
 func SetupBashCalls() error {

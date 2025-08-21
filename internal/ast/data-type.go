@@ -111,3 +111,11 @@ type PointerDataType struct {
 func (pdt *PointerDataType) Name() string {
 	return "*" + pdt.ValueType.Name()
 }
+
+type ChanDataType struct {
+	ValueType DataType
+}
+
+func (cdt *ChanDataType) Name() string {
+	return "chan " + cdt.ValueType.Name()
+}

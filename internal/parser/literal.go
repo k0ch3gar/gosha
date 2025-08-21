@@ -10,6 +10,9 @@ import (
 
 func (p *Parser) parseDataTypeLiteral() ast.DataType {
 	switch p.curToken.Type {
+	case token.CHAN:
+		p.nextToken()
+		return &ast.ChanDataType{ValueType: p.parseDataTypeLiteral()}
 	case token.ASTERISK:
 		p.nextToken()
 		return &ast.ReferenceDataType{ValueType: p.parseDataTypeLiteral()}
