@@ -31,6 +31,7 @@ var (
 	RETURN  = &ast.ReturnDataType{}
 	ERROR   = &ast.ErrorDataType{}
 	BUILTIN = &ast.BuiltinDataType{}
+	BREAK   = &ast.BreakDataType{}
 )
 
 var precedences = map[token.TokenType]int{
@@ -304,6 +305,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return nil
 	case token.RETURN:
 		return p.parseReturnStatement()
+	case token.BREAK:
+		return p.parseBreakStatement()
 	case token.IDENT:
 		if p.peekTokenIs(token.INITASSIGN) {
 			return p.parseInitAssignStatement()
@@ -520,4 +523,16 @@ func (p *Parser) parseDataType() ast.Expression {
 	}
 
 	return expr
+}
+
+func (p *Parser) parseBreakStatement() ast.Statement {
+	stmt := &ast.BreakStatement{
+		Token: p.curToken,
+	}
+
+	if !p.expectPeek(token.NLINE) {
+		return nil
+	}
+
+	return stmt
 }

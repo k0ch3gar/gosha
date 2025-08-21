@@ -52,6 +52,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return &object.ReturnValue{Value: val}
 	case *ast.Program:
 		return evalProgram(node, env)
+	case *ast.BreakStatement:
+		return &object.BreakObject{}
 	case *ast.DataTypeExpression:
 		return &object.DataTypeObject{DataType: node.Type}
 	case *ast.AssignStatement:
@@ -233,6 +235,8 @@ func evalForStatement(stmt *ast.ForStatement, env *object.Environment) object.Ob
 			result := Eval(stmt.Consequence, env)
 			if result.Type().Name() == parser.RETURN.Name() {
 				return result
+			} else if result.Type().Name() == parser.BREAK.Name() {
+				return NIL
 			}
 		} else {
 			return NIL

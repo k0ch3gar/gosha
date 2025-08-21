@@ -28,6 +28,13 @@ func (dte *DataTypeExpression) TokenLiteral() string {
 	return dte.Token.Literal
 }
 
+type BreakDataType struct {
+}
+
+func (bdt *BreakDataType) Name() string {
+	return "break"
+}
+
 type IntegerDataType struct {
 }
 

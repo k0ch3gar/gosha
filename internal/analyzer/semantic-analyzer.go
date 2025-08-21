@@ -38,6 +38,8 @@ func AnalyzeStatement(stmt ast.Statement, returnType ast.DataType, env *object.E
 		return analyzeSendChanStatement(stmt, env)
 	case *ast.ReturnStatement:
 		return analyzeReturnStatement(stmt, returnType, env)
+	case *ast.BreakStatement:
+		return nil
 	case *ast.AssignStatement:
 		return analyzeAssignStatement(stmt, env)
 	case *ast.IfStatement:
@@ -72,7 +74,7 @@ func analyzeSendChanStatement(stmt *ast.SendChanStatement, env *object.Environme
 		return errors
 	}
 
-	if chn.ChanType.Name() == exprType.Name() {
+	if exprType.Name() == parser.ANY.Name() || chn.ChanType.Name() == exprType.Name() {
 		return nil
 	} else {
 		return []string{fmt.Sprintf("Analyzer error. Expression type and chan type mismatch. Chan type %T, expression type %T", chn.ChanType, exprType)}

@@ -72,6 +72,7 @@ const (
 	FOR      = "FOR"
 	GO       = "GO"
 	CHAN     = "CHAN"
+	BREAK    = "BREAK"
 )
 
 var keywords = map[string]TokenType{
@@ -89,6 +90,7 @@ var keywords = map[string]TokenType{
 	"any":    DTYPE,
 	"for":    FOR,
 	"chan":   CHAN,
+	"break":  BREAK,
 }
 
 func SetupBashCalls() error {
