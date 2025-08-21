@@ -52,6 +52,8 @@ func Eval(node ast.Node, env *object.Environment) object.Object {
 		return &object.ReturnValue{Value: val}
 	case *ast.Program:
 		return evalProgram(node, env)
+	case *ast.DataTypeExpression:
+		return &object.DataTypeObject{DataType: node.Type}
 	case *ast.AssignStatement:
 		val := Eval(node.Value, env)
 		if isError(val) {

@@ -3,10 +3,29 @@ package ast
 import (
 	"bytes"
 	"strings"
+
+	"kstmc.com/gosha/internal/token"
 )
 
 type DataType interface {
 	Name() string
+}
+
+type DataTypeExpression struct {
+	Token token.Token
+	Type  DataType
+}
+
+func (dte *DataTypeExpression) expressionNode() {
+
+}
+
+func (dte *DataTypeExpression) String() string {
+	return dte.Type.Name()
+}
+
+func (dte *DataTypeExpression) TokenLiteral() string {
+	return dte.Token.Literal
 }
 
 type IntegerDataType struct {

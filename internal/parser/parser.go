@@ -83,6 +83,7 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.ASTERISK, p.parsePrefixExpression)
 	p.registerPrefix(token.REF, p.parsePrefixExpression)
 	p.registerPrefix(token.CHANOPERATOR, p.parseChanOperator)
+	p.registerPrefix(token.DTYPE, p.parseDataType)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.OR, p.parseInfixExpression)
@@ -509,4 +510,13 @@ func (p *Parser) parseSendChanOperator() ast.Statement {
 	stmt.Source = p.parseExpression(LOWEST)
 
 	return stmt
+}
+
+func (p *Parser) parseDataType() ast.Expression {
+	expr := &ast.DataTypeExpression{
+		Token: p.curToken,
+		Type:  p.parseDataTypeLiteral(),
+	}
+
+	return expr
 }

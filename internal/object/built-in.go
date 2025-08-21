@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"strconv"
 
 	"kstmc.com/gosha/internal/ast"
 	"kstmc.com/gosha/internal/parser"
@@ -103,4 +104,56 @@ var Builtins = map[string]*Builtin{
 			return &Nil{}
 		},
 	},
+	"make": {
+		Name: "make",
+		Fn: func(args ...Object) Object {
+			arg, ok := args[0].(*DataTypeObject)
+			if !ok {
+				return &Error{Message: fmt.Sprintf("cannot make %s", arg)}
+			}
+			switch arg := arg.DataType.(type) {
+			case *ast.IntegerDataType:
+				return makeIntegerObject(args[1:])
+			case *ast.StringDataType:
+				return makeStringObject(args[1:])
+			default:
+				return &Error{Message: fmt.Sprintf("cannot make %s", arg)}
+			}
+		},
+	},
+}
+
+func makeStringObject(objects []Object) Object {
+	if len(objects) != 1 {
+		return &Error{Message: fmt.Sprintf("unexpected amount of arguments. expected 2, provided %d", len(objects)+1)}
+	}
+
+	switch obj := objects[0].(type) {
+	case *Integer:
+		return &String{Value: strconv.FormatInt(obj.Value, 10)}
+	case *String:
+		return &String{Value: obj.Value}
+	default:
+		return &Error{Message: fmt.Sprintf("cannot make Integer from %s", obj.Inspect())}
+	}
+}
+
+func makeIntegerObject(objects []Object) Object {
+	if len(objects) != 1 {
+		return &Error{Message: fmt.Sprintf("unexpected amount of arguments. expected 2, provided %d", len(objects)+1)}
+	}
+
+	switch obj := objects[0].(type) {
+	case *Integer:
+		return &Integer{Value: obj.Value}
+	case *String:
+		val, err := strconv.Atoi(obj.Value)
+		if err != nil {
+			return &Error{Message: err.Error()}
+		}
+
+		return &Integer{Value: int64(val)}
+	default:
+		return &Error{Message: fmt.Sprintf("cannot make Integer from %s", obj.Inspect())}
+	}
 }
