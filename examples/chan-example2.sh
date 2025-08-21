@@ -5,9 +5,9 @@ var second = make(chan string, 1)
 
 func workers() {
   for true {
-    val := make(int, <- second)
+    val := <- second
     print(val)
-    if val == 0 {
+    if val == "docker ps" {
       break
     }
   }
@@ -15,7 +15,9 @@ func workers() {
 
 func workerf() {
   for true {
-    second<- make(string, <-first)
+    i := <- first
+    val := $(cat ~/.bash_history | tail -n $i | head -n 1)
+    second<- val
   }
 }
 
