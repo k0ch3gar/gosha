@@ -289,6 +289,10 @@ func analyzeCallExpression(expr *ast.CallExpression, env *object.Environment) (a
 	case *ast.BuiltinDataType:
 		return parser.ANY, nil
 	case *ast.FunctionDataType:
+		if len(expr.Arguments) != len(fnType.Parameters) {
+			errors = append(errors, fmt.Sprintf("analyzer error. Incorrect parameter count. expected %d, got=%d", len(fnType.Parameters), len(expr.Arguments)))
+			return nil, errors
+		}
 		for i, param := range expr.Arguments {
 			var arg ast.DataType
 			arg, tempErrors := AnalyzeExpression(param, env)

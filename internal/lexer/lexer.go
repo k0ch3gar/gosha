@@ -200,7 +200,7 @@ func (l *Lexer) readString() string {
 
 func (l *Lexer) readIdentifier() string {
 	position := l.position
-	for isLetter(l.ch) {
+	for isLetter(l.ch) || isDigit(l.ch) {
 		l.readCh()
 	}
 
