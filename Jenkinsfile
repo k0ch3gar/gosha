@@ -29,7 +29,7 @@ pipeline {
                 sh '''
                     go mod tidy
                     go mod download
-                    go build -ldflags="-s -w" -o bin/${BINARY_NAME} .
+                    go build -tags netgo -ldflags '-extldflags "-static"' ./cmd/gosha -o bin/${BINARY_NAME}
                 '''
             }
         }
