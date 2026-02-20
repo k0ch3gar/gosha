@@ -29,7 +29,7 @@ pipeline {
                 sh '''
                     go mod tidy
                     go mod download
-                    go build -tags netgo -ldflags '-extldflags "-static"' ./cmd/gosha -o bin/${BINARY_NAME}
+                    go build -tags netgo -ldflags '-extldflags "-static"' ./cmd/gosha -o ./${BINARY_NAME}
                 '''
             }
         }
@@ -40,7 +40,7 @@ pipeline {
                 sh '''
                     mkdir -p input
                     cp "${CONFIG_FILE}" input/config.yaml
-                    ./bin/${BINARY_NAME} input/config.yaml
+                    ./${BINARY_NAME} input/config.yaml
                 '''
             }
         }
