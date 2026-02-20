@@ -36,11 +36,18 @@ pipeline {
 
         stage('Run Binary') {
             steps {
-                echo 'Running binary with config file...'
+                echo 'Running binary with example file...'
+                script {
+                    def configFile = params.CONFIG_FILE
+                    if (configFile) {
+                        writeFile file: 'input/input.sh', text: readFile(configFile)
+                        echo "Example file written to input/input.sh"
+                    } else {
+                        error "CONFIG_FILE parameter is required!"
+                   }
+                }
                 sh '''
-                    mkdir -p input
-                    cp "${CONFIG_FILE}" input/config.yaml
-                    ./${BINARY_NAME} input/config.yaml
+                    ./${BINARY_NAME} input/input.sh
                 '''
             }
         }
