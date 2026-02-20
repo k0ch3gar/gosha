@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     parameters {
-        file(name: 'CONFIG_FILE', description: 'Configuration file to pass to the binary')
+        stashedFile 'large'
     }
 
     tools {
@@ -37,17 +37,9 @@ pipeline {
         stage('Run Binary') {
             steps {
                 echo 'Running binary with example file...'
-                script {
-                    def configFile = params.CONFIG_FILE
-                    if (configFile) {
-                        writeFile file: 'input/input.sh', text: readFile(configFile)
-                        echo "Example file written to input/input.sh"
-                    } else {
-                        error "CONFIG_FILE parameter is required!"
-                   }
-                }
+                unstash 'large'
                 sh '''
-                    ./${BINARY_NAME} input/input.sh
+                    ./${BINARY_NAME} large
                 '''
             }
         }
